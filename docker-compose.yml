@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:latest
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - TZ=America/Sao_Paulo
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - mata60-network
+
+networks:
+  mata60-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
