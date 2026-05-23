@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres-db:
     image: postgres:latest
     env_file:
       - .env
@@ -17,9 +17,28 @@ services:
     networks:
       - mata60-network
 
+  mysql-db:
+    image: mysql:8.0
+    env_file:
+      - .env
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sql_ddl/ddl.SQL:/docker-entrypoint-initdb.d/01_ddl.sql:ro
+      - ./sql_output/00_executar_tudo.sql:/docker-entrypoint-initdb.d/02_inserts.sql:ro
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
 networks:
   mata60-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  mysql-data:
