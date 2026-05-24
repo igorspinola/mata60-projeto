@@ -4,7 +4,7 @@
 -- Funções: SUB-CONSULTAS + JOIN
 -- Requisito: identificar público de alto valor
 
-  SELECT p.no_participante, p.ds_email, COUNT(i.nu_inscricao) AS qtd_inscricoes
+  SELECT p.no_participante, p.ds_email
   FROM rl_inscricao AS i
   JOIN tb_participante AS p ON i.id_participante = p.id_participante
   WHERE i.id_evento IN (
@@ -12,4 +12,3 @@
       WHERE vl_preco = (SELECT MAX(vl_preco) FROM tb_evento)
   )
   GROUP BY p.no_participante, p.ds_email
-  ORDER BY qtd_inscricoes DESC;
