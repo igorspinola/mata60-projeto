@@ -678,10 +678,95 @@ GROUP BY p.id_participante, p.no_participante
 ORDER BY eventos_inscritos DESC;
 \end{lstlisting}
 
-\subsection{Consulta Avançada 02 --- [Título]}
-\subsection{Consulta Avançada 03 --- [Título]}
-\subsection{Consulta Avançada 04 --- [Título]}
-\subsection{Consulta Avançada 05 --- [Título]}
+\subsection{Consulta Avançada 02 --- Top 3 revisores mais rigorosos (maior taxa de reprovação)}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Calcular a taxa de reprovação de cada revisor e listar os três com maior índice, apoiando a análise do perfil de rigor dos revisores. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTA, WINDOW (RANK).
+\begin{lstlisting}[caption={QA02 --- Top 3 revisores mais rigorosos.}]
+SELECT id_revisor, no_revisor, total_revisoes,
+       total_reprovacoes, taxa_reprovacao, ranking
+FROM (
+    SELECT r.id_revisor, r.no_revisor,
+           COUNT(*) AS total_revisoes,
+           SUM(CASE WHEN rv.st_aprovado = FALSE THEN 1 ELSE 0 END) AS total_reprovacoes,
+           ROUND(SUM(CASE WHEN rv.st_aprovado = FALSE THEN 1 ELSE 0 END) * 100.0
+                 / COUNT(*), 2) AS taxa_reprovacao,
+           RANK() OVER (
+               ORDER BY SUM(CASE WHEN rv.st_aprovado = FALSE THEN 1 ELSE 0 END) * 100.0
+                        / COUNT(*) DESC
+           ) AS ranking
+    FROM tb_revisor r
+        JOIN rl_revisao rv ON rv.id_revisor = r.id_revisor
+        JOIN tb_publicacao p ON p.id_publicacao = rv.id_publicacao
+    GROUP BY r.id_revisor, r.no_revisor
+) ranking_revisores
+WHERE ranking <= 3
+ORDER BY ranking;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 03 --- Evento mais lucrativo de cada local}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Para cada \texttt{ds\_local}, identificar qual evento obteve a maior receita confirmada (pagamentos com status \textit{CONCLUIDO}), apoiando a análise de performance por localização. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUB-CONSULTA, WINDOW (RANK com PARTITION).
+\begin{lstlisting}[caption={QA03 --- Evento mais lucrativo de cada local.}]
+SELECT *
+FROM (
+    SELECT e.ds_local, e.id_evento, e.no_evento,
+           SUM(e.vl_preco) AS receita_confirmada,
+           RANK() OVER (
+               PARTITION BY e.ds_local
+               ORDER BY SUM(e.vl_preco) DESC
+           ) AS ranking
+    FROM tb_evento e
+        JOIN rl_inscricao i ON i.id_evento = e.id_evento
+        JOIN tb_status_pagamento sp ON sp.id_pagamento = i.cd_status_pagamento
+    WHERE sp.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY e.ds_local, e.id_evento, e.no_evento
+) ranking_local
+WHERE ranking = 1
+ORDER BY ds_local;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 04 --- Participantes que gastaram acima da média geral}
+\textbf{Requisitos atendidos:} RF02, RF03, RF09 \\
+\textbf{Objetivo:} Listar participantes cujo gasto total em inscrições com pagamento concluído supera a média geral de gastos, identificando clientes \emph{premium}. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUM, SUB-CONSULTA, WINDOW (AVG OVER).
+\begin{lstlisting}[caption={QA04 --- Participantes que gastaram acima da média geral.}]
+SELECT *
+FROM (
+    SELECT p.id_participante, p.no_participante,
+           SUM(e.vl_preco) AS gasto_total,
+           AVG(SUM(e.vl_preco)) OVER () AS media_geral
+    FROM tb_participante p
+        JOIN rl_inscricao i ON i.id_participante = p.id_participante
+        JOIN tb_evento e ON e.id_evento = i.id_evento
+        JOIN tb_status_pagamento sp ON sp.id_pagamento = i.cd_status_pagamento
+    WHERE sp.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY p.id_participante, p.no_participante
+) dados
+WHERE gasto_total > media_geral
+ORDER BY gasto_total DESC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 05 --- Ranking de publicações pelo número de coautores}
+\textbf{Requisitos atendidos:} RF04, RF05, RF07 \\
+\textbf{Objetivo:} Listar todas as publicações aprovadas com a quantidade de coautores e sua posição em um ranking de colaboração. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (RANK).
+\begin{lstlisting}[caption={QA05 --- Ranking de publicações pelo número de coautores.}]
+SELECT tb_publicacao.id_publicacao,
+       tb_publicacao.no_titulo,
+       COUNT(rl_autoria.id_participante) AS qt_coautores,
+       RANK() OVER (
+           ORDER BY COUNT(rl_autoria.id_participante) DESC
+       ) AS posicao
+FROM tb_publicacao
+    JOIN rl_autoria ON rl_autoria.id_publicacao = tb_publicacao.id_publicacao
+    JOIN tb_participante ON tb_participante.id_participante = rl_autoria.id_participante
+WHERE tb_publicacao.st_aprovado = TRUE
+GROUP BY tb_publicacao.id_publicacao, tb_publicacao.no_titulo
+ORDER BY posicao, tb_publicacao.id_publicacao;
+\end{lstlisting}
+
 \subsection{Consulta Avançada 06 --- Revisores que nunca reprovaram nenhuma publicação}
 \textbf{Requisitos atendidos:} RF06, RF08 \\
 \textbf{Objetivo:} Listar revisores cujo \texttt{st\_aprovado} em todas as revisões realizadas é verdadeiro, indicando possível leniência no processo de avaliação. \\
@@ -700,7 +785,38 @@ WHERE tb_revisor.id_revisor NOT IN (
 GROUP BY tb_revisor.no_revisor
 HAVING COUNT(rl_revisao.id_publicacao) > 0;
 \end{lstlisting}
-\subsection{Consulta Avançada 07 --- [Título]}
+\subsection{Consulta Avançada 07 --- Eventos com receita acima da média (com posição no ranking)}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Listar eventos cuja receita proveniente de inscrições com pagamento concluído supera a média geral, exibindo sua posição em um ranking de receita. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUM, SUB-CONSULTA, WINDOW (RANK).
+\begin{lstlisting}[caption={QA07 --- Eventos com receita acima da média.}]
+SELECT id_evento, no_evento, receita,
+       RANK() OVER (ORDER BY receita DESC) AS posicao
+FROM (
+    SELECT tb_evento.id_evento, tb_evento.no_evento,
+           SUM(tb_evento.vl_preco) AS receita
+    FROM tb_evento
+        JOIN rl_inscricao ON rl_inscricao.id_evento = tb_evento.id_evento
+        JOIN tb_status_pagamento ON tb_status_pagamento.id_pagamento
+                                  = rl_inscricao.cd_status_pagamento
+    WHERE tb_status_pagamento.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY tb_evento.id_evento, tb_evento.no_evento
+) receita_por_evento
+WHERE receita > (
+    SELECT AVG(receita)
+    FROM (
+        SELECT SUM(tb_evento.vl_preco) AS receita
+        FROM tb_evento
+            JOIN rl_inscricao ON rl_inscricao.id_evento = tb_evento.id_evento
+            JOIN tb_status_pagamento ON tb_status_pagamento.id_pagamento
+                                      = rl_inscricao.cd_status_pagamento
+        WHERE tb_status_pagamento.no_status_pagamento = 'CONCLUIDO'
+        GROUP BY tb_evento.id_evento
+    ) med
+)
+ORDER BY posicao;
+\end{lstlisting}
+
 \subsection{Consulta Avançada 08 --- Participantes com duas ou mais inscrições no mesmo mês}
 \textbf{Requisitos atendidos:} RF02, RF03 \\
 \textbf{Objetivo:} Listar participantes que efetuaram duas ou mais inscrições no mesmo mês e ano de pagamento, indicando comportamento de consumo intenso. \\
@@ -722,18 +838,65 @@ GROUP BY tb_participante.id_participante,
 HAVING COUNT(*) > 1
 ORDER BY qt_inscricoes DESC, no_participante;
 \end{lstlisting}
-\subsection{Consulta Avançada 09 --- [Título]}
-\subsection{Consulta Avançada 10 --- [Título]}
-\subsection{Consulta Avançada 11 --- [Título]}
-\subsection{Consulta Avançada 12 --- [Título]}
-\subsection{Consulta Avançada 13 --- [Título]}
-\subsection{Consulta Avançada 14 --- [Título]}
-\subsection{Consulta Avançada 15 --- [Título]}
-\subsection{Consulta Avançada 16 --- [Título]}
-\subsection{Consulta Avançada 17 --- [Título]}
-\subsection{Consulta Avançada 18 --- [Título]}
-\subsection{Consulta Avançada 19 --- [Título]}
-\subsection{Consulta Avançada 20 --- [Título]}
+\subsection{Consulta Avançada 09 --- Autores com publicação aprovada em dois ou mais tipos diferentes}
+\textbf{Requisitos atendidos:} RF04, RF05, RF07 \\
+\textbf{Objetivo:} Listar autores que possuem publicações aprovadas em mais de um tipo (por exemplo, Artigo e Resumo), identificando pesquisadores versáteis. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT (DISTINCT), HAVING.
+
+\subsection{Consulta Avançada 10 --- Posição de cada evento dentro do seu local}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Usar \texttt{RANK() OVER (PARTITION BY ds\_local)} para ranquear eventos dentro de cada local e permitir a comparação entre eventos da mesma localidade. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (RANK com PARTITION).
+
+\subsection{Consulta Avançada 11 --- Diferença entre receita real e potencial}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Mostrar, por evento, a receita potencial (todas as inscrições) versus a receita real (somente \textit{CONCLUIDO}) e a perda percentual, medindo inadimplência. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUB-CONSULTAS.
+
+\subsection{Consulta Avançada 12 --- Top 5 publicações com mais revisões}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Listar as cinco publicações que passaram pelo maior número de revisões, identificando publicações controversas. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (ROW\_NUMBER).
+
+\subsection{Consulta Avançada 13 --- Participantes inscritos no evento mais caro}
+\textbf{Requisitos atendidos:} RF02, RF03 \\
+\textbf{Objetivo:} Listar o nome e o e-mail dos participantes inscritos no evento de maior preço, identificando o público de alto valor. \\
+\textbf{Recursos utilizados:} JOIN, SUB-CONSULTAS.
+
+\subsection{Consulta Avançada 14 --- Eventos com média de publicações por participante maior que 1}
+\textbf{Requisitos atendidos:} RF03, RF05, RF07 \\
+\textbf{Objetivo:} Mostrar eventos nos quais, em média, cada participante inscrito tem mais de uma publicação aprovada, sinalizando eventos com alto perfil acadêmico. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTAS.
+
+\subsection{Consulta Avançada 15 --- Revisores com taxa de aprovação acima da média geral}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Calcular a taxa de aprovação de cada revisor e listar aqueles cuja taxa supera a média geral, indicando perfis mais permissivos. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTAS.
+
+\subsection{Consulta Avançada 16 --- Receita acumulada por evento (ordem cronológica)}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Usar \texttt{SUM() OVER (ORDER BY dh\_inicio)} para apresentar a receita acumulada ao longo do tempo, permitindo análise temporal de faturamento. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, WINDOW (SUM acumulada).
+
+\subsection{Consulta Avançada 17 --- Publicações cujo autor também é revisor (conflito de interesse)}
+\textbf{Requisitos atendidos:} RF05, RF06, RF08 \\
+\textbf{Objetivo:} Detectar casos em que um autor aparece como revisor (mesmo CPF) no sistema, sinalizando potencial conflito de interesse. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUB-CONSULTAS.
+
+\subsection{Consulta Avançada 18 --- Top 3 autores mais publicados em cada evento}
+\textbf{Requisitos atendidos:} RF04, RF05, RF07 \\
+\textbf{Objetivo:} Para cada evento, mostrar os três autores com mais publicações aprovadas, destacando referências por evento. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (ROW\_NUMBER com PARTITION).
+
+\subsection{Consulta Avançada 19 --- Eventos onde a maioria pagou via PIX}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Listar eventos em que mais de 50\% das inscrições com status \textit{CONCLUIDO} foram pagas via PIX, suportando análise de preferência de método de pagamento. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, HAVING, SUB-CONSULTAS.
+
+\subsection{Consulta Avançada 20 --- Ficha completa do participante (relatório consolidado)}
+\textbf{Requisitos atendidos:} RF02, RF03, RF05, RF07, RF09 \\
+\textbf{Objetivo:} Para cada participante, consolidar total de eventos, total gasto, total de publicações aprovadas e ranking de gasto, formando um \textit{dashboard} individual. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTAS, WINDOW (RANK).
 
 \subsection{Mapa Consulta $\times$ Requisito}
 
@@ -760,25 +923,25 @@ QI09 & Intermediária & RF03, RF09 & JOIN, WHERE, GROUP BY, SUM \\
 QI10 & Intermediária & RF09 & JOIN, GROUP BY, SUM, RANK() WINDOW \\
 \hline
 QA01 & Avançada & RF02, RF03, RF05, RF07 & SUB-QUERY, JOIN, GROUP BY, COUNT \\
-QA02 & Avançada & [RFXX] & [...] \\
-QA03 & Avançada & [RFXX] & [...] \\
-QA04 & Avançada & [RFXX] & [...] \\
-QA05 & Avançada & [RFXX] & [...] \\
+QA02 & Avançada & RF06, RF08 & JOIN, GROUP BY, COUNT, SUB-QUERY, RANK() WINDOW \\
+QA03 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUB-QUERY, RANK() WINDOW \\
+QA04 & Avançada & RF02, RF03, RF09 & JOIN, GROUP BY, SUM, SUB-QUERY, AVG() WINDOW \\
+QA05 & Avançada & RF04, RF05, RF07 & JOIN, GROUP BY, COUNT, RANK() WINDOW \\
 QA06 & Avançada & RF06, RF08 & SUB-QUERY, LEFT JOIN, GROUP BY, HAVING, COUNT \\
-QA07 & Avançada & [RFXX] & [...] \\
+QA07 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUM, SUB-QUERY, RANK() WINDOW \\
 QA08 & Avançada & RF02, RF03 & JOIN, GROUP BY, COUNT, HAVING, EXTRACT \\
-QA09 & Avançada & [RFXX] & [...] \\
-QA10 & Avançada & [RFXX] & [...] \\
-QA11 & Avançada & [RFXX] & [...] \\
-QA12 & Avançada & [RFXX] & [...] \\
-QA13 & Avançada & [RFXX] & [...] \\
-QA14 & Avançada & [RFXX] & [...] \\
-QA15 & Avançada & [RFXX] & [...] \\
-QA16 & Avançada & [RFXX] & [...] \\
-QA17 & Avançada & [RFXX] & [...] \\
-QA18 & Avançada & [RFXX] & [...] \\
-QA19 & Avançada & [RFXX] & [...] \\
-QA20 & Avançada & [RFXX] & [...] \\
+QA09 & Avançada & RF04, RF05, RF07 & JOIN, GROUP BY, COUNT (DISTINCT), HAVING \\
+QA10 & Avançada & RF03, RF09 & JOIN, GROUP BY, COUNT, RANK() WINDOW (PARTITION) \\
+QA11 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUB-QUERY \\
+QA12 & Avançada & RF06, RF08 & JOIN, GROUP BY, COUNT, ROW\_NUMBER() WINDOW \\
+QA13 & Avançada & RF02, RF03 & JOIN, SUB-QUERY \\
+QA14 & Avançada & RF03, RF05, RF07 & JOIN, GROUP BY, COUNT, SUB-QUERY \\
+QA15 & Avançada & RF06, RF08 & JOIN, GROUP BY, COUNT, SUB-QUERY \\
+QA16 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUM() WINDOW acumulada \\
+QA17 & Avançada & RF05, RF06, RF08 & JOIN, GROUP BY, SUB-QUERY \\
+QA18 & Avançada & RF04, RF05, RF07 & JOIN, GROUP BY, COUNT, ROW\_NUMBER() WINDOW (PARTITION) \\
+QA19 & Avançada & RF03, RF09 & JOIN, GROUP BY, COUNT, HAVING, SUB-QUERY \\
+QA20 & Avançada & RF02, RF03, RF05, RF07, RF09 & JOIN, GROUP BY, COUNT, SUB-QUERY, RANK() WINDOW \\
 \hline
 \end{longtable}
 
