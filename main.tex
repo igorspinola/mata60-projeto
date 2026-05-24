@@ -8,8 +8,8 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[brazil]{babel}
-\usepackage{times}
-\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{mathptmx}
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=2cm]{geometry}
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{caption}
@@ -29,6 +29,7 @@
 \usepackage{setspace}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
+\usepackage{placeins}
 
 \hypersetup{
     colorlinks=true,
@@ -36,7 +37,7 @@
     citecolor=blue,
     urlcolor=blue,
     pdftitle={MATA60 - Sistema para Controle de Eventos Acadêmicos},
-    pdfauthor={Deivid Costa, Douglas Aleixo, Igor Spinola, Pedro Larchert}
+    pdfauthor={Deivid Costa dos Santos, Douglas Aleixo de Santana, Emanuel Patrick Alves Bastos, Igor Spinola de Albuquerque e Almeida Teles, Pedro Vitório Larchert de Oliveira}
 }
 
 \definecolor{sqlkeyword}{rgb}{0.0, 0.0, 0.6}
@@ -104,27 +105,28 @@
     \includegraphics[width=3cm]{Brasão_da_UFBA.png}\\[0.4cm]
     {\large \textbf{UNIVERSIDADE FEDERAL DA BAHIA}}\\
     {\large \textbf{INSTITUTO DE COMPUTAÇÃO}}\\
-    {\large \textbf{MATA60 -- BANCO DE DADOS}}\\
+    {\large \textbf{MATA60 --- BANCO DE DADOS}}\\
     \vspace{0.5cm}
     {\normalsize Prof. Robespierre Pita}
 
     \vfill
 
-    {\Large \textbf{Projeto da Disciplina -- Marco 1}}\\[0.5cm]
+    {\Large \textbf{Projeto da Disciplina --- Marco 1}}\\[0.5cm]
     {\LARGE \textbf{Elaboração, Modelagem e Implantação\\ do Banco de Dados}}\\[0.5cm]
     {\Large \emph{Estudo de Caso: Sistema para Controle de Eventos Acadêmicos}}
 
     \vfill
 
     {\large \textbf{Autores:}}\\[0.3cm]
-    {\large Deivid Costa}\\
-    {\large Douglas Aleixo}\\
-    {\large Igor Spinola}\\
-    {\large Pedro Larchert}\\
+    {\large Deivid Costa dos Santos}\\
+    {\large Douglas Aleixo de Santana}\\
+    {\large Emanuel Patrick Alves Bastos}\\
+    {\large Igor Spinola de Albuquerque e Almeida Teles}\\
+    {\large Pedro Vitório Larchert de Oliveira}\\
 
     \vfill
 
-    {\large Salvador -- BA}\\
+    {\large Salvador --- BA}\\
     {\large \today}
 \end{center}
 \end{titlepage}
@@ -137,15 +139,7 @@
     \textbf{\large Resumo}
 \end{center}
 \noindent
-Este trabalho apresenta a modelagem e implantação de um banco de dados relacional
-para gerenciamento de eventos acadêmicos, desenvolvido na disciplina MATA60 --
-Banco de Dados da Universidade Federal da Bahia. O sistema cobre o ciclo completo
-de um evento científico: inscrições com controle de pagamento, submissão e revisão
-por pares de publicações, organização de anais e certificação de participantes.
-O modelo foi construído com a notação de Peter Chen no BrModelo, traduzido para o
-modelo relacional e implantado no PostgreSQL 16 via Docker. Foram elaboradas 10
-consultas intermediárias envolvendo \texttt{JOIN}, \texttt{GROUP BY}, \texttt{COUNT}
-e funções de janela (\texttt{WINDOW}).
+Este trabalho descreve o desenvolvimento de um banco de dados relacional voltado ao gerenciamento de eventos acadêmicos, elaborado no âmbito da disciplina MATA60 --- Banco de Dados, da Universidade Federal da Bahia. O sistema contempla o ciclo completo de um evento científico, desde o controle de inscrições e pagamentos até a submissão, revisão por pares e publicação nos anais. O modelo conceitual foi elaborado com a notação de Peter Chen na ferramenta BrModelo e posteriormente traduzido para o modelo relacional, com implantação no PostgreSQL 16 em ambiente Docker. Foram desenvolvidas dez consultas intermediárias, utilizando as cláusulas JOIN, GROUP BY, COUNT e funções de janela (WINDOW).
 
 \vspace{0.5cm}
 \noindent\textbf{Palavras-chave:} Banco de Dados; PostgreSQL; Modelo Entidade-Relacionamento;
@@ -157,23 +151,11 @@ Eventos Acadêmicos; Revisão por Pares.
 \section{Introdução}
 \label{sec:introducao}
 
-Eventos científicos e acadêmicos -- como simpósios, conferências e workshops --
-demandam uma infraestrutura de informação capaz de coordenar múltiplos atores e
-processos simultâneos: organizadores, autores, revisores e participantes interagem
-em torno de submissões, avaliações, inscrições e pagamentos. A ausência de um
-sistema de dados bem estruturado torna esse processo suscetível a inconsistências,
-perda de informação e dificuldades na prestação de contas.
+A realização de eventos científicos envolve uma série de processos interdependentes: organização de submissões, coordenação de revisores, controle de inscrições e registro de pagamentos. Quando esses processos são gerenciados sem uma estrutura de dados adequada, surgem inconsistências, retrabalho e dificuldades na geração de relatórios confiáveis.
 
-Este projeto propõe um banco de dados relacional para cobrir esse domínio de forma
-completa. Partindo do estudo de caso fornecido pelo professor, o grupo modelou,
-implementou e populou o banco no PostgreSQL 16, elaborando também consultas
-analíticas que respondem a perguntas reais de gestão de eventos.
+O presente projeto propõe um banco de dados relacional para apoiar a gestão de eventos acadêmicos. A partir do estudo de caso definido pelo professor, o grupo realizou a modelagem, a implementação e a população do banco no PostgreSQL 16, além de elaborar consultas analíticas voltadas a necessidades reais de administração de eventos.
 
-As seções seguintes descrevem o estudo de caso e os requisitos levantados
-(Seção~\ref{sec:descritivo}), a modelagem conceitual e lógica (Seção~\ref{sec:modelagem}),
-a implantação do DDL (Seção~\ref{sec:implantacao}), as consultas elaboradas
-(Seção~\ref{sec:consultas}) e as considerações finais
-(Seção~\ref{sec:conclusao}).
+As seções seguintes apresentam o estudo de caso e os requisitos levantados (Seção~\ref{sec:descritivo}), a modelagem conceitual e lógica (Seção~\ref{sec:modelagem}), a implantação via DDL (Seção~\ref{sec:implantacao}), as consultas desenvolvidas (Seção~\ref{sec:consultas}) e as considerações finais (Seção~\ref{sec:conclusao}).
 
 % =============================================================================
 \section{Descritivo do Projeto}
@@ -202,8 +184,7 @@ Inscrição, Pagamento e Certificado.
 \subsection{Extensão Proposta ao Estudo de Caso}
 \label{subsec:caso-estendido}
 
-O grupo identificou algumas lacunas no estudo de caso original e propôs as
-seguintes extensões:
+A análise do estudo de caso revelou oportunidades de ampliação do modelo original. As extensões a seguir foram incorporadas ao projeto:
 
 \begin{itemize}
     \item \textbf{Tipos de publicação:} a distinção entre \emph{artigo completo}
@@ -256,13 +237,10 @@ seguintes extensões:
 \subsection{Delimitação do Minimundo}
 \label{subsec:minimundo}
 
-O sistema modela o ciclo de vida de um evento acadêmico desde a abertura de
-inscrições até a publicação dos anais. Estão no escopo: eventos, participantes,
-inscrições, publicações, autoria, revisão e anais. Estão fora do escopo:
-emissão de certificados, programação detalhada das sessões e integração com
-gateways de pagamento externos.
+O minimundo abrange o ciclo de vida de um evento acadêmico, da abertura de inscrições à publicação dos anais. Fazem parte do escopo: eventos, participantes, inscrições, publicações, autoria, revisão por pares e anais. Não fazem parte do escopo: emissão de certificados, grade programática detalhada e integração com plataformas externas de pagamento.
 
-\begin{table}[H]
+\begin{table}[htb]
+\begin{minipage}{\textwidth}
 \centering
 \caption{Mapeamento entre elementos do minimundo e requisitos.}
 \label{tab:minimundo-requisitos}
@@ -292,6 +270,7 @@ gateways de pagamento externos.
 \texttt{rl\_anais}             & Publicações aceitas vinculadas ao evento                 & RF07 \\
 \hline
 \end{tabularx}
+\end{minipage}
 \end{table}
 
 % =============================================================================
@@ -308,10 +287,7 @@ gateways de pagamento externos.
     \label{fig:mer}
 \end{figure}
 
-A Figura~\ref{fig:mer} apresenta o modelo conceitual. As entidades principais
-são \texttt{Evento}, \texttt{Participante}, \texttt{Publicacao} e \texttt{Revisor}.
-Os relacionamentos N:M (\emph{autoria}, \emph{revisão}, \emph{inscrição} e
-\emph{anais}) foram representados como tabelas associativas no modelo lógico.
+A Figura~\ref{fig:mer} apresenta o modelo entidade-relacionamento do sistema. As entidades centrais são \texttt{Evento}, \texttt{Participante}, \texttt{Publicacao} e \texttt{Revisor}. Os relacionamentos de cardinalidade N:M --- autoria, revisão, inscrição e anais --- foram traduzidos como tabelas associativas no modelo relacional.
 
 \subsection{Modelo Lógico}
 \label{subsec:logico}
@@ -323,8 +299,7 @@ Os relacionamentos N:M (\emph{autoria}, \emph{revisão}, \emph{inscrição} e
     \label{fig:logico}
 \end{figure}
 
-O modelo lógico resultante, apresentado na Figura~\ref{fig:logico}, é composto
-por 10 tabelas. A notação textual do esquema é:
+A Figura~\ref{fig:logico} apresenta o modelo lógico relacional resultante da tradução do MER. O esquema é composto por dez tabelas, cuja notação textual é apresentada a seguir:
 
 \begin{lstlisting}[caption={Esquema lógico relacional.}, label={lst:logico}, language={}]
 tb_evento(id_evento PK, no_evento, ds_local, dh_inicio, dh_fim, vl_preco, qt_vagas)
@@ -345,13 +320,7 @@ rl_anais(id_evento FK, id_publicacao FK, PK(id_evento, id_publicacao))
 \subsection{Convenções de Nomenclatura}
 \label{subsec:nomenclatura}
 
-A nomenclatura segue as diretrizes do MAD/DATASUS e da ISO/IEC 11179-5:
-prefixo \texttt{tb\_} para entidades, \texttt{rl\_} para relacionamentos N:M;
-colunas nomeadas com prefixo semântico (\texttt{id\_} para identificadores,
-\texttt{no\_} para nomes, \texttt{ds\_} para descrições, \texttt{dh\_} para
-data/hora, \texttt{st\_} para booleanos de estado, \texttt{cd\_} para
-códigos de referência, \texttt{vl\_} para valores monetários e \texttt{qt\_}
-para quantidades).
+A nomenclatura adotada segue as recomendações do MAD/DATASUS e da norma ISO/IEC 11179-5. Tabelas de entidade recebem o prefixo \texttt{tb\_}; tabelas de relacionamento, o prefixo \texttt{rl\_}. As colunas seguem prefixos semânticos: \texttt{id\_} para identificadores, \texttt{no\_} para nomes, \texttt{ds\_} para descrições, \texttt{dh\_} para campos de data e hora, \texttt{st\_} para indicadores booleanos de estado, \texttt{cd\_} para códigos de referência, \texttt{vl\_} para valores monetários e \texttt{qt\_} para quantidades.
 
 % =============================================================================
 \section{Implantação}
@@ -360,9 +329,7 @@ para quantidades).
 \subsection{Script DDL}
 \label{subsec:ddl}
 
-O banco foi implantado no PostgreSQL 16. O script DDL cria as tabelas com suas
-restrições e, em seguida, declara todas as chaves estrangeiras via
-\texttt{ALTER TABLE}.
+O banco de dados foi implantado no PostgreSQL 16. O script DDL está organizado em dois blocos: o primeiro cria as tabelas com suas restrições de integridade; o segundo declara as chaves estrangeiras por meio de comandos \texttt{ALTER TABLE}, permitindo que a ordem de criação das tabelas seja independente das dependências referenciais.
 
 \begin{lstlisting}[caption={DDL -- tabelas de domínio e entidades principais.}, label={lst:ddl1}]
 CREATE TABLE tb_status_pagamento (
@@ -487,20 +454,15 @@ ALTER TABLE rl_revisao
 \subsection{Ambiente de Execução}
 \label{subsec:docker}
 
-O banco foi containerizado com Docker Compose. Ao executar \texttt{docker compose up},
-o PostgreSQL 16 é iniciado e os scripts DDL e de inserção são aplicados automaticamente
-via \texttt{/docker-entrypoint-initdb.d/}. Um serviço MySQL 8.0 também está disponível
-para comparações.
+O ambiente de execução foi containerizado com Docker Compose. Ao iniciar os serviços com \texttt{docker compose up}, o PostgreSQL 16 é provisionado e os scripts de DDL e de inserção de dados são executados automaticamente pelo mecanismo \texttt{/docker-entrypoint-initdb.d/}. O arquivo \texttt{docker-compose.yml} também disponibiliza uma instância MySQL 8.0 para fins comparativos.
 
 % =============================================================================
 \section{Consultas Intermediárias}
 \label{sec:consultas}
 
-As 10 consultas a seguir envolvem pelo menos 3 tabelas e utilizam duas ou mais
-das funções \texttt{JOIN}, \texttt{GROUP BY}, \texttt{COUNT} e \texttt{WINDOW}.
+As dez consultas apresentadas nesta seção foram elaboradas com o requisito mínimo de três tabelas e ao menos duas das seguintes funções: \texttt{JOIN}, \texttt{GROUP BY}, \texttt{COUNT} e \texttt{WINDOW}.
 
-% ------------------------------------------------------------------
-\subsubsection*{QI01 -- Eventos com mais publicações nos anais}
+\subsection{QI01 --- Eventos com mais publicações nos anais}
 \textbf{Requisitos atendidos:} RF07 \\
 \textbf{Objetivo:} Rankear eventos pela quantidade de publicações que entraram nos anais.\\
 \textbf{Recursos:} JOIN, GROUP BY, COUNT.
@@ -513,8 +475,7 @@ GROUP BY tb_evento.id_evento, tb_evento.no_evento
 ORDER BY tot_publi DESC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI02 -- Quantidade de coautores por publicação aprovada}
+\subsection{QI02 --- Quantidade de coautores por publicação aprovada}
 \textbf{Requisitos atendidos:} RF04, RF05 \\
 \textbf{Objetivo:} Para cada publicação aprovada, mostrar título e número de autores.\\
 \textbf{Recursos:} JOIN, WHERE, GROUP BY, COUNT.
@@ -527,8 +488,7 @@ GROUP BY rl_autoria.id_publicacao, no_titulo
 ORDER BY rl_autoria.id_publicacao ASC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI03 -- Participantes que também são autores}
+\subsection{QI03 --- Participantes que também são autores}
 \textbf{Requisitos atendidos:} RF02, RF05 \\
 \textbf{Objetivo:} Listar participantes que publicaram pelo menos um artigo.\\
 \textbf{Recursos:} JOIN, GROUP BY.
@@ -540,8 +500,7 @@ GROUP BY tb_participante.id_participante
 ORDER BY tb_participante.id_participante;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI04 -- Distribuição de status de pagamento por evento}
+\subsection{QI04 --- Distribuição de status de pagamento por evento}
 \textbf{Requisitos atendidos:} RF03, RF09 \\
 \textbf{Objetivo:} Mostrar quantas inscrições estão em cada status (CONCLUIDO, PENDENTE, CANCELADO) por evento.\\
 \textbf{Recursos:} JOIN, GROUP BY, COUNT.
@@ -556,8 +515,7 @@ GROUP BY rl_inscricao.id_evento, rl_inscricao.cd_status_pagamento, no_status_pag
 ORDER BY rl_inscricao.id_evento ASC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI05 -- Publicações por tipo em cada evento}
+\subsection{QI05 --- Publicações por tipo em cada evento}
 \textbf{Requisitos atendidos:} RF04, RF07 \\
 \textbf{Objetivo:} Contar quantos artigos e resumos cada evento publicou nos anais.\\
 \textbf{Recursos:} INNER JOIN (4 tabelas), GROUP BY, COUNT.
@@ -574,8 +532,7 @@ GROUP BY tb_evento.no_evento, tb_tipo_publicacao.no_tipo_publicacao
 ORDER BY total DESC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI06 -- Eventos com 100\% das inscrições pagas}
+\subsection{QI06 --- Eventos com 100\% das inscrições pagas}
 \textbf{Requisitos atendidos:} RF03, RF09 \\
 \textbf{Objetivo:} Listar eventos sem inadimplência (nenhuma inscrição PENDENTE ou CANCELADA).\\
 \textbf{Recursos:} JOIN, subquery, WHERE.
@@ -594,8 +551,7 @@ WHERE ta.tot_sem_pagar < 1
 ORDER BY tb_evento.id_evento ASC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI07 -- Carga de revisão por revisor}
+\subsection{QI07 --- Carga de revisão por revisor}
 \textbf{Requisitos atendidos:} RF06, RF08 \\
 \textbf{Objetivo:} Mostrar quantas publicações cada revisor avaliou, ordenado por carga decrescente.\\
 \textbf{Recursos:} JOIN, GROUP BY, COUNT.
@@ -608,8 +564,7 @@ GROUP BY r.id_revisor, r.no_revisor
 ORDER BY qtd_publicacoes_revisadas DESC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI08 -- Publicações aprovadas e apresentadas por evento}
+\subsection{QI08 --- Publicações aprovadas e apresentadas por evento}
 \textbf{Requisitos atendidos:} RF07, RF10 \\
 \textbf{Objetivo:} Contar quantas publicações foram aprovadas e efetivamente apresentadas em cada evento.\\
 \textbf{Recursos:} JOIN, WHERE, GROUP BY, COUNT.
@@ -624,8 +579,7 @@ GROUP BY tb_evento.no_evento
 ORDER BY tb_evento.no_evento ASC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI09 -- Receita por método de pagamento}
+\subsection{QI09 --- Receita por método de pagamento}
 \textbf{Requisitos atendidos:} RF03, RF09 \\
 \textbf{Objetivo:} Somar a receita confirmada (CONCLUIDO) por método (crédito, débito, pix) em cada evento.\\
 \textbf{Recursos:} JOIN, WHERE, GROUP BY, SUM.
@@ -642,8 +596,7 @@ GROUP BY tb_evento.no_evento, rl_inscricao.ds_metodo_pagamento
 ORDER BY total_vendas DESC;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
-\subsubsection*{QI10 -- Ranking de eventos por receita (WINDOW)}
+\subsection{QI10 --- Ranking de eventos por receita (WINDOW)}
 \textbf{Requisitos atendidos:} RF09 \\
 \textbf{Objetivo:} Usar \texttt{RANK()} para posicionar cada evento pelo total de receita confirmada.\\
 \textbf{Recursos:} JOIN, GROUP BY, SUM, WINDOW (RANK).
@@ -662,13 +615,12 @@ FROM (
 ) ranking;
 \end{lstlisting}
 
-% ------------------------------------------------------------------
 \subsection{Consultas Avançadas}
 \label{subsec:consultas-adv}
 % Regra: mínimo 3 tabelas + 3 das funções {SUB-CONSULTAS, JOIN, GROUP BY, WINDOW, COUNT}.
 % São 20 consultas avançadas.
 
-\subsubsection{Consulta Avançada 01 -- [Título]}
+\subsubsection{Consulta Avançada 01 --- [Título]}
 \textbf{Requisitos atendidos:} [...] \\
 \textbf{Objetivo:} [...] \\
 \textbf{Recursos utilizados:} [...].
@@ -676,27 +628,26 @@ FROM (
 -- A preencher
 \end{lstlisting}
 
-\subsubsection{Consulta Avançada 02 -- [Título]}
-\subsubsection{Consulta Avançada 03 -- [Título]}
-\subsubsection{Consulta Avançada 04 -- [Título]}
-\subsubsection{Consulta Avançada 05 -- [Título]}
-\subsubsection{Consulta Avançada 06 -- [Título]}
-\subsubsection{Consulta Avançada 07 -- [Título]}
-\subsubsection{Consulta Avançada 08 -- [Título]}
-\subsubsection{Consulta Avançada 09 -- [Título]}
-\subsubsection{Consulta Avançada 10 -- [Título]}
-\subsubsection{Consulta Avançada 11 -- [Título]}
-\subsubsection{Consulta Avançada 12 -- [Título]}
-\subsubsection{Consulta Avançada 13 -- [Título]}
-\subsubsection{Consulta Avançada 14 -- [Título]}
-\subsubsection{Consulta Avançada 15 -- [Título]}
-\subsubsection{Consulta Avançada 16 -- [Título]}
-\subsubsection{Consulta Avançada 17 -- [Título]}
-\subsubsection{Consulta Avançada 18 -- [Título]}
-\subsubsection{Consulta Avançada 19 -- [Título]}
-\subsubsection{Consulta Avançada 20 -- [Título]}
+\subsubsection{Consulta Avançada 02 --- [Título]}
+\subsubsection{Consulta Avançada 03 --- [Título]}
+\subsubsection{Consulta Avançada 04 --- [Título]}
+\subsubsection{Consulta Avançada 05 --- [Título]}
+\subsubsection{Consulta Avançada 06 --- [Título]}
+\subsubsection{Consulta Avançada 07 --- [Título]}
+\subsubsection{Consulta Avançada 08 --- [Título]}
+\subsubsection{Consulta Avançada 09 --- [Título]}
+\subsubsection{Consulta Avançada 10 --- [Título]}
+\subsubsection{Consulta Avançada 11 --- [Título]}
+\subsubsection{Consulta Avançada 12 --- [Título]}
+\subsubsection{Consulta Avançada 13 --- [Título]}
+\subsubsection{Consulta Avançada 14 --- [Título]}
+\subsubsection{Consulta Avançada 15 --- [Título]}
+\subsubsection{Consulta Avançada 16 --- [Título]}
+\subsubsection{Consulta Avançada 17 --- [Título]}
+\subsubsection{Consulta Avançada 18 --- [Título]}
+\subsubsection{Consulta Avançada 19 --- [Título]}
+\subsubsection{Consulta Avançada 20 --- [Título]}
 
-% ------------------------------------------------------------------
 \subsection{Mapa Consulta $\times$ Requisito}
 
 \begin{longtable}{|c|l|l|l|}
@@ -750,11 +701,10 @@ QA20 & Avançada & [RFXX] & [...] \\
 
 \subsection{Justificativa dos Índices Propostos}
 \label{subsec:indices-justif}
-[Apresentar e justificar os índices propostos a partir da análise das
-consultas elaboradas. Considerar índices B-Tree, Hash, GIN/GiST conforme
-o caso, sempre justificando teoricamente.]
+Os índices propostos foram selecionados a partir da análise das colunas mais utilizadas como filtro e junção nas consultas intermediárias. Todos são do tipo B-Tree, adequado para consultas de igualdade e de intervalo sobre chaves estrangeiras e colunas booleanas. A tabela a seguir relaciona cada índice às consultas que dele se beneficiam.
 
-\begin{table}[H]
+\begin{table}[htb]
+\begin{minipage}{\textwidth}
 \centering
 \caption{Plano de indexação proposto.}
 \label{tab:indices}
@@ -771,6 +721,7 @@ idx\_revisao\_revisor     & rl\_revisao      & (id\_revisor) -- B-Tree      & QI
 idx\_publicacao\_aprovado & tb\_publicacao   & (st\_aprovado) -- B-Tree     & QI02, QI08 \\
 \hline
 \end{tabularx}
+\end{minipage}
 \end{table}
 
 \begin{lstlisting}[caption={DDL dos índices.},label={lst:ddl-indices}]
@@ -802,7 +753,7 @@ A avaliação de desempenho será conduzida segundo o seguinte protocolo:
 \label{subsec:resultados}
 
 \begin{longtable}{|c|r|r|r|r|r|}
-\caption{Tempos de execução (ms) e speedup -- baseline vs. plano de indexação.}
+\caption{Tempos de execução (ms) e speedup --- baseline vs. plano de indexação.}
 \label{tab:speedup}\\
 \hline
 \textbf{Consulta} & \multicolumn{2}{c|}{\textbf{Baseline}} & \multicolumn{2}{c|}{\textbf{Com Índices}} & \textbf{Speedup} \\
@@ -832,29 +783,17 @@ QA20 & [---] & [---] & [---] & [---] & [---] \\
 
 \subsection{Discussão}
 \label{subsec:discussao}
-[Discutir os resultados: quais consultas mais se beneficiaram do plano de
-indexação, eventuais casos de \emph{slowdown}, custo de manutenção dos
-índices em operações de escrita, e como o plano final atende aos
-requisitos não-funcionais de desempenho.]
+A análise dos resultados será realizada após a coleta dos tempos de execução. Espera-se que os índices sobre colunas de junção frequente --- como \texttt{id\_evento} em \texttt{rl\_inscricao} e \texttt{id\_evento} em \texttt{rl\_anais} --- produzam os maiores ganhos de desempenho. Índices sobre colunas booleanas, como \texttt{st\_aprovado}, tendem a ser menos eficientes em tabelas pequenas, mas relevantes quando o volume de dados crescer.
 
 % =============================================================================
 \section{Considerações Finais}
 \label{sec:conclusao}
 
-O trabalho entregou um banco de dados relacional completo para o domínio de
-eventos acadêmicos, cobrindo desde o cadastro de participantes até o controle
-de revisão por pares e emissão de anais. O modelo foi projetado com atenção
-à integridade referencial e à nomenclatura padronizada, facilitando consultas
-analíticas e manutenção futura.
+O projeto resultou em um banco de dados relacional funcional para o domínio de eventos acadêmicos. O modelo cobre desde o cadastro de participantes e o controle financeiro das inscrições até o processo de revisão por pares e a organização dos anais. A preocupação com integridade referencial e com uma nomenclatura consistente facilita a manutenção e a evolução do esquema.
 
-As 10 consultas intermediárias demonstram a capacidade do esquema de responder
-a perguntas reais de gestão: produtividade científica por evento, inadimplência,
-carga de revisão e desempenho financeiro. A query QI10 introduz funções de
-janela (\texttt{RANK}), preparando o grupo para as consultas avançadas.
+As consultas intermediárias demonstram que o modelo é capaz de responder a perguntas relevantes para a gestão de eventos: volume de publicações por evento, perfil de autoria, situação dos pagamentos e desempenho financeiro por método. A consulta QI10, com o uso de \texttt{RANK()}, introduz o uso de funções de janela e serve de base para as consultas avançadas.
 
-Como próximos passos, o grupo pretende implementar as 20 consultas avançadas,
-finalizar a coleta de dados de desempenho e conduzir a avaliação com
-\texttt{EXPLAIN ANALYZE}.
+As etapas seguintes compreendem a elaboração das vinte consultas avançadas, a execução do plano de indexação e a coleta sistemática dos tempos de execução para a avaliação de desempenho com \texttt{EXPLAIN ANALYZE}.
 
 % =============================================================================
 \begin{thebibliography}{9}
@@ -870,7 +809,7 @@ Disponível em: \url{https://datasus.saude.gov.br/metodologia-de-administracao-d
 
 \bibitem{iso11179}
 ISO/IEC.
-\emph{ISO/IEC 11179-5:2015 -- Information technology -- Metadata registries (MDR) -- Part 5: Naming principles}.
+\emph{ISO/IEC 11179-5:2015 --- Information technology --- Metadata registries (MDR) --- Part 5: Naming principles}.
 ISO, 2015.
 
 \bibitem{postgresql}
@@ -882,26 +821,26 @@ Disponível em: \url{https://www.postgresql.org/docs/16/}.
 
 % =============================================================================
 \appendix
-\section{Anexo A -- Script DDL Completo}
+\section{Anexo A --- Script DDL Completo}
 \label{anx:ddl}
 % \lstinputlisting[caption={Script DDL completo.}]{sql_ddl/ddl.SQL}
 [Script disponível em \texttt{sql\_ddl/ddl.SQL} no repositório.]
 
-\section{Anexo B -- Script de População}
+\section{Anexo B --- Script de População}
 \label{anx:populacao}
 % \lstinputlisting[caption={Script de população.}]{sql_output/00_executar_tudo.sql}
 [Script disponível em \texttt{sql\_output/00\_executar\_tudo.sql} no repositório.]
 
-\section{Anexo C -- Consultas Intermediárias e Avançadas}
+\section{Anexo C --- Consultas Intermediárias e Avançadas}
 \label{anx:queries}
 % \lstinputlisting[caption={Consultas Intermediárias.}]{sql_intermediario/q1.sql}
 [Scripts disponíveis em \texttt{sql\_intermediario/} no repositório (q1.sql a q10.sql).]
 
-\section{Anexo D -- Script de Indexação}
+\section{Anexo D --- Script de Indexação}
 \label{anx:indices}
 [Inserir aqui o script de criação dos índices.]
 
-\section{Anexo E -- Tutorial de Reprodução}
+\section{Anexo E --- Tutorial de Reprodução}
 \label{anx:tutorial}
 
 \textbf{Pré-requisitos:} Docker e Docker Compose instalados.
