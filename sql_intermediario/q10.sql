@@ -1,0 +1,5 @@
+-- Query 10: Posição de cada evento no ranking de receita (WINDOW)
+-- Objetivo: Usar RANK() para mostrar a posição de cada evento pela receita confirmada.
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: JOIN + WINDOW (RANK()) + GROUP BY
+-- Requisito: comparar desempenho financeiro entre eventos
