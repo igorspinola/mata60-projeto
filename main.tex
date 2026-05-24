@@ -331,7 +331,8 @@ A nomenclatura adotada segue as recomendações do MAD/DATASUS e da norma ISO/IE
 
 O banco de dados foi implantado no PostgreSQL 16. O script DDL está organizado em dois blocos: o primeiro cria as tabelas com suas restrições de integridade; o segundo declara as chaves estrangeiras por meio de comandos \texttt{ALTER TABLE}, permitindo que a ordem de criação das tabelas seja independente das dependências referenciais.
 
-\begin{lstlisting}[caption={DDL -- tabelas de domínio e entidades principais.}, label={lst:ddl1}]
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- tabelas de domínio \texttt{tb\_status\_pagamento} e \texttt{tb\_tipo\_publicacao}.}, label={lst:ddl-dominio}]
 CREATE TABLE tb_status_pagamento (
     id_pagamento INTEGER PRIMARY KEY,
     no_status_pagamento VARCHAR(30) UNIQUE NOT NULL
@@ -341,7 +342,11 @@ CREATE TABLE tb_tipo_publicacao (
     id_tipo_publicacao INTEGER PRIMARY KEY,
     no_tipo_publicacao VARCHAR(50) UNIQUE NOT NULL
 );
+\end{lstlisting}
+\end{minipage}
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- entidade \texttt{tb\_evento}.}, label={lst:ddl-evento}]
 CREATE TABLE tb_evento (
     id_evento INTEGER PRIMARY KEY,
     no_evento VARCHAR(100) NOT NULL,
@@ -351,7 +356,11 @@ CREATE TABLE tb_evento (
     vl_preco DECIMAL(10,2) NOT NULL,
     qt_vagas INTEGER NOT NULL
 );
+\end{lstlisting}
+\end{minipage}
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- entidades \texttt{tb\_participante} e \texttt{tb\_revisor}.}, label={lst:ddl-pessoas}]
 CREATE TABLE tb_participante (
     id_participante INTEGER PRIMARY KEY,
     no_participante VARCHAR(100) NOT NULL,
@@ -364,7 +373,11 @@ CREATE TABLE tb_revisor (
     no_revisor VARCHAR(100) NOT NULL,
     nu_cpf VARCHAR(11) UNIQUE NOT NULL
 );
+\end{lstlisting}
+\end{minipage}
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- entidade \texttt{tb\_publicacao}.}, label={lst:ddl-publicacao}]
 CREATE TABLE tb_publicacao (
     id_publicacao INTEGER PRIMARY KEY,
     no_titulo VARCHAR(200) NOT NULL,
@@ -376,8 +389,10 @@ CREATE TABLE tb_publicacao (
     cd_tipo_publicacao INTEGER NOT NULL
 );
 \end{lstlisting}
+\end{minipage}
 
-\begin{lstlisting}[caption={DDL -- tabelas associativas (relacionamentos N:M).}, label={lst:ddl2}]
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- relacionamento \texttt{rl\_inscricao}.}, label={lst:ddl-inscricao}]
 CREATE TABLE rl_inscricao (
     nu_inscricao INTEGER UNIQUE NOT NULL,
     id_participante INTEGER NOT NULL,
@@ -387,7 +402,11 @@ CREATE TABLE rl_inscricao (
     dh_pagamento TIMESTAMP,
     PRIMARY KEY (nu_inscricao, id_participante, id_evento)
 );
+\end{lstlisting}
+\end{minipage}
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- relacionamentos \texttt{rl\_autoria}, \texttt{rl\_revisao} e \texttt{rl\_anais}.}, label={lst:ddl-relacionamentos}]
 CREATE TABLE rl_autoria (
     id_participante INTEGER NOT NULL,
     id_publicacao INTEGER NOT NULL,
@@ -408,8 +427,10 @@ CREATE TABLE rl_anais (
     PRIMARY KEY (id_evento, id_publicacao)
 );
 \end{lstlisting}
+\end{minipage}
 
-\begin{lstlisting}[caption={DDL -- declaração das chaves estrangeiras.}, label={lst:ddl3}]
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{tb\_publicacao} e \texttt{rl\_inscricao}.}, label={lst:fk-publicacao-inscricao}]
 ALTER TABLE tb_publicacao
     ADD CONSTRAINT FK_tb_publicacao_tipo_publicacao
     FOREIGN KEY (cd_tipo_publicacao) REFERENCES tb_tipo_publicacao (id_tipo_publicacao);
@@ -425,7 +446,11 @@ ALTER TABLE rl_inscricao
 ALTER TABLE rl_inscricao
     ADD CONSTRAINT FK_rl_inscricao_status_pagamento
     FOREIGN KEY (cd_status_pagamento) REFERENCES tb_status_pagamento (id_pagamento);
+\end{lstlisting}
+\end{minipage}
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{rl\_anais} e \texttt{rl\_autoria}.}, label={lst:fk-anais-autoria}]
 ALTER TABLE rl_anais
     ADD CONSTRAINT FK_rl_anais_id_evento
     FOREIGN KEY (id_evento) REFERENCES tb_evento (id_evento);
@@ -441,7 +466,11 @@ ALTER TABLE rl_autoria
 ALTER TABLE rl_autoria
     ADD CONSTRAINT FK_rl_autoria_publicacao
     FOREIGN KEY (id_publicacao) REFERENCES tb_publicacao (id_publicacao);
+\end{lstlisting}
+\end{minipage}
 
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{rl\_revisao}.}, label={lst:fk-revisao}]
 ALTER TABLE rl_revisao
     ADD CONSTRAINT FK_rl_revisao_publicacao
     FOREIGN KEY (id_publicacao) REFERENCES tb_publicacao (id_publicacao);
@@ -450,6 +479,7 @@ ALTER TABLE rl_revisao
     ADD CONSTRAINT FK_rl_revisao_revisao
     FOREIGN KEY (id_revisor) REFERENCES tb_revisor (id_revisor);
 \end{lstlisting}
+\end{minipage}
 
 \subsection{Ambiente de Execução}
 \label{subsec:docker}
@@ -615,12 +645,13 @@ FROM (
 ) ranking;
 \end{lstlisting}
 
-\subsection{Consultas Avançadas}
-\label{subsec:consultas-adv}
+% =============================================================================
+\section{Consultas Avançadas}
+\label{sec:consultas-adv}
 % Regra: mínimo 3 tabelas + 3 das funções {SUB-CONSULTAS, JOIN, GROUP BY, WINDOW, COUNT}.
 % São 20 consultas avançadas.
 
-\subsubsection{Consulta Avançada 01 --- Participantes que publicaram em todos os eventos em que se inscreveram}
+\subsection{Consulta Avançada 01 --- Participantes que publicaram em todos os eventos em que se inscreveram}
 \textbf{Requisitos atendidos:} RF02, RF03, RF05, RF07 \\
 \textbf{Objetivo:} Listar participantes que possuem publicação aprovada em cada evento no qual se inscreveram. \\
 \textbf{Recursos utilizados:} SUB-CONSULTAS, JOIN, GROUP BY, COUNT.
@@ -647,11 +678,11 @@ GROUP BY p.id_participante, p.no_participante
 ORDER BY eventos_inscritos DESC;
 \end{lstlisting}
 
-\subsubsection{Consulta Avançada 02 --- [Título]}
-\subsubsection{Consulta Avançada 03 --- [Título]}
-\subsubsection{Consulta Avançada 04 --- [Título]}
-\subsubsection{Consulta Avançada 05 --- [Título]}
-\subsubsection{Consulta Avançada 06 --- Revisores que nunca reprovaram nenhuma publicação}
+\subsection{Consulta Avançada 02 --- [Título]}
+\subsection{Consulta Avançada 03 --- [Título]}
+\subsection{Consulta Avançada 04 --- [Título]}
+\subsection{Consulta Avançada 05 --- [Título]}
+\subsection{Consulta Avançada 06 --- Revisores que nunca reprovaram nenhuma publicação}
 \textbf{Requisitos atendidos:} RF06, RF08 \\
 \textbf{Objetivo:} Listar revisores cujo \texttt{st\_aprovado} em todas as revisões realizadas é verdadeiro, indicando possível leniência no processo de avaliação. \\
 \textbf{Recursos utilizados:} SUB-CONSULTA (NOT IN), LEFT JOIN, GROUP BY, HAVING, COUNT.
@@ -669,8 +700,8 @@ WHERE tb_revisor.id_revisor NOT IN (
 GROUP BY tb_revisor.no_revisor
 HAVING COUNT(rl_revisao.id_publicacao) > 0;
 \end{lstlisting}
-\subsubsection{Consulta Avançada 07 --- [Título]}
-\subsubsection{Consulta Avançada 08 --- Participantes com duas ou mais inscrições no mesmo mês}
+\subsection{Consulta Avançada 07 --- [Título]}
+\subsection{Consulta Avançada 08 --- Participantes com duas ou mais inscrições no mesmo mês}
 \textbf{Requisitos atendidos:} RF02, RF03 \\
 \textbf{Objetivo:} Listar participantes que efetuaram duas ou mais inscrições no mesmo mês e ano de pagamento, indicando comportamento de consumo intenso. \\
 \textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, HAVING, EXTRACT.
@@ -691,18 +722,18 @@ GROUP BY tb_participante.id_participante,
 HAVING COUNT(*) > 1
 ORDER BY qt_inscricoes DESC, no_participante;
 \end{lstlisting}
-\subsubsection{Consulta Avançada 09 --- [Título]}
-\subsubsection{Consulta Avançada 10 --- [Título]}
-\subsubsection{Consulta Avançada 11 --- [Título]}
-\subsubsection{Consulta Avançada 12 --- [Título]}
-\subsubsection{Consulta Avançada 13 --- [Título]}
-\subsubsection{Consulta Avançada 14 --- [Título]}
-\subsubsection{Consulta Avançada 15 --- [Título]}
-\subsubsection{Consulta Avançada 16 --- [Título]}
-\subsubsection{Consulta Avançada 17 --- [Título]}
-\subsubsection{Consulta Avançada 18 --- [Título]}
-\subsubsection{Consulta Avançada 19 --- [Título]}
-\subsubsection{Consulta Avançada 20 --- [Título]}
+\subsection{Consulta Avançada 09 --- [Título]}
+\subsection{Consulta Avançada 10 --- [Título]}
+\subsection{Consulta Avançada 11 --- [Título]}
+\subsection{Consulta Avançada 12 --- [Título]}
+\subsection{Consulta Avançada 13 --- [Título]}
+\subsection{Consulta Avançada 14 --- [Título]}
+\subsection{Consulta Avançada 15 --- [Título]}
+\subsection{Consulta Avançada 16 --- [Título]}
+\subsection{Consulta Avançada 17 --- [Título]}
+\subsection{Consulta Avançada 18 --- [Título]}
+\subsection{Consulta Avançada 19 --- [Título]}
+\subsection{Consulta Avançada 20 --- [Título]}
 
 \subsection{Mapa Consulta $\times$ Requisito}
 
