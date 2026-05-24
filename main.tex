@@ -620,21 +620,77 @@ FROM (
 % Regra: mínimo 3 tabelas + 3 das funções {SUB-CONSULTAS, JOIN, GROUP BY, WINDOW, COUNT}.
 % São 20 consultas avançadas.
 
-\subsubsection{Consulta Avançada 01 --- [Título]}
-\textbf{Requisitos atendidos:} [...] \\
-\textbf{Objetivo:} [...] \\
-\textbf{Recursos utilizados:} [...].
-\begin{lstlisting}[caption={Consulta Avançada 01.}]
--- A preencher
+\subsubsection{Consulta Avançada 01 --- Participantes que publicaram em todos os eventos em que se inscreveram}
+\textbf{Requisitos atendidos:} RF02, RF03, RF05, RF07 \\
+\textbf{Objetivo:} Listar participantes que possuem publicação aprovada em cada evento no qual se inscreveram. \\
+\textbf{Recursos utilizados:} SUB-CONSULTAS, JOIN, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QA01 --- Participantes que publicaram em todos os eventos em que se inscreveram.}]
+SELECT p.id_participante, p.no_participante,
+       COUNT(DISTINCT i.id_evento) AS eventos_inscritos
+FROM tb_participante p
+    JOIN rl_inscricao i ON p.id_participante = i.id_participante
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM rl_inscricao i2
+    WHERE i2.id_participante = p.id_participante
+      AND NOT EXISTS (
+          SELECT 1
+          FROM rl_autoria a
+              JOIN tb_publicacao pub ON a.id_publicacao = pub.id_publicacao
+              JOIN rl_anais an ON pub.id_publicacao = an.id_publicacao
+          WHERE a.id_participante = p.id_participante
+            AND an.id_evento = i2.id_evento
+            AND pub.st_aprovado = TRUE
+      )
+)
+GROUP BY p.id_participante, p.no_participante
+ORDER BY eventos_inscritos DESC;
 \end{lstlisting}
 
 \subsubsection{Consulta Avançada 02 --- [Título]}
 \subsubsection{Consulta Avançada 03 --- [Título]}
 \subsubsection{Consulta Avançada 04 --- [Título]}
 \subsubsection{Consulta Avançada 05 --- [Título]}
-\subsubsection{Consulta Avançada 06 --- [Título]}
+\subsubsection{Consulta Avançada 06 --- Revisores que nunca reprovaram nenhuma publicação}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Listar revisores cujo \texttt{st\_aprovado} em todas as revisões realizadas é verdadeiro, indicando possível leniência no processo de avaliação. \\
+\textbf{Recursos utilizados:} SUB-CONSULTA (NOT IN), LEFT JOIN, GROUP BY, HAVING, COUNT.
+\begin{lstlisting}[caption={QA06 --- Revisores que nunca reprovaram nenhuma publicação.}]
+SELECT tb_revisor.no_revisor,
+       COUNT(rl_revisao.id_publicacao) AS total_revisao
+FROM tb_revisor
+    LEFT JOIN rl_revisao ON rl_revisao.id_revisor = tb_revisor.id_revisor
+    LEFT JOIN tb_publicacao ON tb_publicacao.id_publicacao = rl_revisao.id_publicacao
+WHERE tb_revisor.id_revisor NOT IN (
+    SELECT id_revisor
+    FROM rl_revisao
+    WHERE rl_revisao.st_aprovado = FALSE
+)
+GROUP BY tb_revisor.no_revisor
+HAVING COUNT(rl_revisao.id_publicacao) > 0;
+\end{lstlisting}
 \subsubsection{Consulta Avançada 07 --- [Título]}
-\subsubsection{Consulta Avançada 08 --- [Título]}
+\subsubsection{Consulta Avançada 08 --- Participantes com duas ou mais inscrições no mesmo mês}
+\textbf{Requisitos atendidos:} RF02, RF03 \\
+\textbf{Objetivo:} Listar participantes que efetuaram duas ou mais inscrições no mesmo mês e ano de pagamento, indicando comportamento de consumo intenso. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, HAVING, EXTRACT.
+\begin{lstlisting}[caption={QA08 --- Participantes com duas ou mais inscrições no mesmo mês.}]
+SELECT tb_participante.id_participante,
+       tb_participante.no_participante,
+       EXTRACT(MONTH FROM rl_inscricao.dh_pagamento) AS mes,
+       EXTRACT(YEAR  FROM rl_inscricao.dh_pagamento) AS ano,
+       COUNT(*) AS qt_inscricoes
+FROM tb_participante
+    JOIN rl_inscricao ON rl_inscricao.id_participante = tb_participante.id_participante
+    JOIN tb_evento ON tb_evento.id_evento = rl_inscricao.id_evento
+WHERE rl_inscricao.dh_pagamento IS NOT NULL
+GROUP BY tb_participante.id_participante,
+         tb_participante.no_participante,
+         EXTRACT(MONTH FROM rl_inscricao.dh_pagamento),
+         EXTRACT(YEAR  FROM rl_inscricao.dh_pagamento)
+HAVING COUNT(*) > 1
+ORDER BY qt_inscricoes DESC, no_participante;
+\end{lstlisting}
 \subsubsection{Consulta Avançada 09 --- [Título]}
 \subsubsection{Consulta Avançada 10 --- [Título]}
 \subsubsection{Consulta Avançada 11 --- [Título]}
@@ -672,14 +728,14 @@ QI08 & Intermediária & RF07, RF10 & JOIN, WHERE, GROUP BY, COUNT \\
 QI09 & Intermediária & RF03, RF09 & JOIN, WHERE, GROUP BY, SUM \\
 QI10 & Intermediária & RF09 & JOIN, GROUP BY, SUM, RANK() WINDOW \\
 \hline
-QA01 & Avançada & [RFXX] & SUB-QUERY, JOIN, GROUP BY \\
+QA01 & Avançada & RF02, RF03, RF05, RF07 & SUB-QUERY, JOIN, GROUP BY, COUNT \\
 QA02 & Avançada & [RFXX] & [...] \\
 QA03 & Avançada & [RFXX] & [...] \\
 QA04 & Avançada & [RFXX] & [...] \\
 QA05 & Avançada & [RFXX] & [...] \\
-QA06 & Avançada & [RFXX] & [...] \\
+QA06 & Avançada & RF06, RF08 & SUB-QUERY, LEFT JOIN, GROUP BY, HAVING, COUNT \\
 QA07 & Avançada & [RFXX] & [...] \\
-QA08 & Avançada & [RFXX] & [...] \\
+QA08 & Avançada & RF02, RF03 & JOIN, GROUP BY, COUNT, HAVING, EXTRACT \\
 QA09 & Avançada & [RFXX] & [...] \\
 QA10 & Avançada & [RFXX] & [...] \\
 QA11 & Avançada & [RFXX] & [...] \\
