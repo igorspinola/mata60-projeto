@@ -1,0 +1,5 @@
+-- Query 13: Participantes inscritos no evento mais caro
+-- Objetivo: Listar nome e email dos participantes inscritos no evento de maior preço.
+-- Tabelas: participante, inscricao, evento
+-- Funções: SUB-CONSULTAS + JOIN
+-- Requisito: identificar público de alto valor

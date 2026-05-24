@@ -1,0 +1,5 @@
+-- Query 20: Ficha completa do participante (relatório consolidado)
+-- Objetivo: Listar cada participante com total de eventos, total gasto, total publicações aprovadas e ranking de gasto.
+-- Tabelas: participante, inscricao, evento, status_pagamento, autoria, publicacao
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY + WINDOW (RANK) + COUNT
+-- Requisito: dashboard individual de participante

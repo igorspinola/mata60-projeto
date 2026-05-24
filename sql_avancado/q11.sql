@@ -1,0 +1,5 @@
+-- Query 11: Diferença entre receita real e potencial
+-- Objetivo: Mostrar receita potencial (todas inscrições) vs real (só CONCLUIDO) e a perda percentual.
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY
+-- Requisito: medir inadimplência por evento

@@ -1,0 +1,5 @@
+-- Query 18: Top 3 autores mais publicados em cada evento
+-- Objetivo: Para cada evento, mostrar os 3 autores com mais publicações aprovadas.
+-- Tabelas: evento, anais, publicacao, autoria, participante
+-- Funções: JOIN + GROUP BY + WINDOW (ROW_NUMBER com PARTITION) + COUNT
+-- Requisito: destaque de autores por evento

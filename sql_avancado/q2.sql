@@ -1,0 +1,5 @@
+-- Query 2: Top 3 revisores mais rigorosos (maior taxa de reprovação)
+-- Objetivo: Calcular % de reprovação de cada revisor e mostrar os 3 com maior índice.
+-- Tabelas: revisor, revisao, publicacao
+-- Funções: JOIN + GROUP BY + WINDOW (RANK) + COUNT
+-- Requisito: análise de perfil de revisores

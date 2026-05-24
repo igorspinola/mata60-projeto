@@ -1,0 +1,5 @@
+-- Query 19: Eventos onde a maioria pagou via PIX
+-- Objetivo: Listar eventos onde mais de 50% das inscrições CONCLUIDO foram via PIX.
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY + COUNT + HAVING
+-- Requisito: análise de preferência de pagamento

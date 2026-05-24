@@ -1,0 +1,5 @@
+-- Query 17: Publicações cujo autor também é revisor (conflito de interesse)
+-- Objetivo: Detectar casos onde um autor aparece como revisor (mesmo CPF) no sistema.
+-- Tabelas: participante, autoria, publicacao, revisao, revisor
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY
+-- Requisito: detectar potencial conflito de interesse

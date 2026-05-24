@@ -1,0 +1,5 @@
+-- Query 7: Eventos com receita acima da média (com posição no ranking)
+-- Objetivo: Mostrar eventos cuja receita CONCLUIDO supera a média geral, com sua posição no ranking.
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY + WINDOW (RANK)
+-- Requisito: identificar eventos de alta performance

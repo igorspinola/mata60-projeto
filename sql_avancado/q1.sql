@@ -1,0 +1,5 @@
+-- Query 1: Participantes que publicaram em TODOS os eventos que se inscreveram
+-- Objetivo: Listar participantes que têm publicação aprovada em cada evento no qual se inscreveram.
+-- Tabelas: participante, inscricao, autoria, publicacao, anais
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY + COUNT
+-- Requisito: identificar pesquisadores extremamente ativos

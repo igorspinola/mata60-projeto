@@ -1,0 +1,5 @@
+-- Query 6: Revisores que NUNCA reprovaram nenhuma publicação
+-- Objetivo: Listar revisores cujo st_aprovado em todas as revisões é TRUE.
+-- Tabelas: revisor, revisao, publicacao
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY (com HAVING) + COUNT
+-- Requisito: detectar possível leniência na revisão

@@ -1,0 +1,5 @@
+-- Query 10: Posição de cada evento dentro do seu local
+-- Objetivo: Usar RANK() OVER (PARTITION BY ds_local) para rankear eventos dentro de cada local.
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: JOIN + GROUP BY + WINDOW (RANK com PARTITION) + COUNT
+-- Requisito: comparar eventos dentro do mesmo local

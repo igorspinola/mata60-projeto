@@ -1,0 +1,5 @@
+-- Query 15: Revisores com taxa de aprovação acima da média geral
+-- Objetivo: Calcular taxa de aprovação de cada revisor e mostrar os que estão acima da média.
+-- Tabelas: revisor, revisao, publicacao
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY + COUNT
+-- Requisito: identificar revisores mais permissivos que o normal

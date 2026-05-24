@@ -1,0 +1,5 @@
+-- Query 4: Participantes que gastaram acima da média geral
+-- Objetivo: Listar participantes cujo gasto total em inscrições CONCLUIDO é maior que a média de todos.
+-- Tabelas: participante, inscricao, evento, status_pagamento
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY
+-- Requisito: identificar clientes premium

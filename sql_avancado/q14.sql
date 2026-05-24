@@ -1,0 +1,5 @@
+-- Query 14: Eventos com média de publicações por participante maior que 1
+-- Objetivo: Mostrar eventos onde, em média, cada participante inscrito tem mais de 1 publicação.
+-- Tabelas: evento, inscricao, autoria, anais, publicacao
+-- Funções: SUB-CONSULTAS + JOIN + GROUP BY + COUNT
+-- Requisito: identificar eventos altamente acadêmicos

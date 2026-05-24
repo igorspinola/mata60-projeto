@@ -1,0 +1,5 @@
+-- Query 3: Evento mais lucrativo de cada local
+-- Objetivo: Para cada ds_local, mostrar qual evento teve maior receita confirmada (CONCLUIDO).
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: JOIN + GROUP BY + WINDOW (RANK) + SUB-CONSULTA
+-- Requisito: análise de performance por localização

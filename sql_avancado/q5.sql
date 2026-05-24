@@ -1,0 +1,5 @@
+-- Query 5: Ranking de publicações pelo número de coautores
+-- Objetivo: Mostrar todas as publicações aprovadas com o número de coautores e a posição no ranking.
+-- Tabelas: publicacao, autoria, participante
+-- Funções: JOIN + GROUP BY + COUNT + WINDOW (RANK)
+-- Requisito: identificar publicações mais colaborativas

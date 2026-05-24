@@ -1,0 +1,5 @@
+-- Query 12: Top 5 publicações com mais revisões
+-- Objetivo: Listar as 5 publicações que passaram pelo maior número de revisões.
+-- Tabelas: publicacao, revisao, revisor
+-- Funções: JOIN + GROUP BY + COUNT + WINDOW (ROW_NUMBER)
+-- Requisito: identificar publicações controversas

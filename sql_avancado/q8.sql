@@ -1,0 +1,5 @@
+-- Query 8: Participantes com 2+ inscrições no mesmo mês
+-- Objetivo: Listar participantes que tiveram 2 ou mais inscrições no mesmo mês/ano de pagamento.
+-- Tabelas: participante, inscricao, evento
+-- Funções: JOIN + GROUP BY + COUNT (com HAVING)
+-- Requisito: identificar comportamento de consumo intenso

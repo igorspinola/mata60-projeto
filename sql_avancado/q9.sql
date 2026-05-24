@@ -1,0 +1,5 @@
+-- Query 9: Autores com publicação aprovada em 2+ tipos diferentes
+-- Objetivo: Listar autores que têm publicações aprovadas em mais de um tipo (ex: Artigo E Resumo).
+-- Tabelas: participante, autoria, publicacao, tipo_publicacao
+-- Funções: JOIN + GROUP BY + COUNT (DISTINCT) + HAVING
+-- Requisito: identificar pesquisadores versáteis

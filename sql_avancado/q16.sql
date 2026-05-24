@@ -1,0 +1,5 @@
+-- Query 16: Receita acumulada por evento (ordem cronológica)
+-- Objetivo: Usar SUM() OVER (ORDER BY dh_inicio) para mostrar receita acumulada ao longo do tempo.
+-- Tabelas: evento, inscricao, status_pagamento
+-- Funções: JOIN + GROUP BY + WINDOW (SUM acumulada)
+-- Requisito: análise temporal de receita acumulada
