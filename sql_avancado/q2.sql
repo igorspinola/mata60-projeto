@@ -12,7 +12,7 @@ SELECT
     ranking
 FROM (
         SELECT
-            r.id_revisor, r.no_revisor, COUNT() AS total_revisoes, SUM(
+            r.id_revisor, r.no_revisor, COUNT(*) AS total_revisoes, SUM(
                 CASE
                     WHEN rv.st_aprovado = false THEN 1
                     ELSE 0
@@ -23,14 +23,14 @@ FROM (
                         WHEN rv.st_aprovado = false THEN 1
                         ELSE 0
                     END
-                ) 100.0 / COUNT(), 2
+                ) * 100.0 / COUNT(*), 2
             ) AS taxa_reprovacao, RANK() OVER (
                 ORDER BY SUM(
                         CASE
                             WHEN rv.st_aprovado = false THEN 1
                             ELSE 0
                         END
-                    ) 100.0 / COUNT(*) DESC
+                    ) * 100.0 / COUNT(*) DESC
             ) AS ranking
         FROM
             tb_revisor r
