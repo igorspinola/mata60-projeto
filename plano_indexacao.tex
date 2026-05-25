@@ -1,0 +1,28 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage[margin=2.5cm]{geometry}
+
+\begin{document}
+
+\section*{Plano de Indexação}
+
+\begin{longtable}{|l|p{7cm}|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endhead
+\texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & B-Tree \\
+\hline
+\texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{longtable}
+
+\end{document}
