@@ -1,0 +1,1397 @@
+% =============================================================================
+% Projeto MATA60 - Banco de Dados (UFBA)
+% Versão adaptada ao modelo da Sociedade Brasileira de Computação (SBC)
+% =============================================================================
+
+\documentclass[12pt]{article}
+
+\usepackage{sbc-template}
+\usepackage{graphicx,url}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+
+\usepackage{float}
+\usepackage{caption}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{placeins}
+\usepackage{adjustbox}
+
+\definecolor{sqlkeyword}{rgb}{0.0, 0.0, 0.6}
+\definecolor{sqlstring}{rgb}{0.6, 0.0, 0.0}
+\definecolor{sqlcomment}{rgb}{0.25, 0.5, 0.35}
+\definecolor{codebg}{rgb}{0.97,0.97,0.97}
+
+\lstdefinelanguage{SQLext}{
+  morekeywords={SELECT,FROM,WHERE,INSERT,INTO,VALUES,UPDATE,SET,DELETE,
+    CREATE,TABLE,VIEW,INDEX,DROP,ALTER,ADD,PRIMARY,KEY,FOREIGN,REFERENCES,
+    NOT,NULL,UNIQUE,CHECK,DEFAULT,JOIN,INNER,LEFT,RIGHT,FULL,OUTER,ON,
+    GROUP,BY,ORDER,HAVING,UNION,INTERSECT,EXCEPT,AS,DISTINCT,COUNT,SUM,
+    AVG,MIN,MAX,OVER,PARTITION,WINDOW,WITH,RECURSIVE,CASE,WHEN,THEN,ELSE,
+    END,IN,EXISTS,BETWEEN,LIKE,AND,OR,IS,SERIAL,INTEGER,VARCHAR,TEXT,
+    DATE,TIMESTAMP,BOOLEAN,NUMERIC,DECIMAL,EXPLAIN,ANALYZE,BEGIN,COMMIT,
+    ROLLBACK,TRANSACTION,SCHEMA,CONSTRAINT,CASCADE,RESTRICT,USING,RETURNING,RANK},
+  sensitive=false,
+  morecomment=[l]{--},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]'
+}
+
+\lstset{
+    language=SQLext,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{sqlkeyword}\bfseries,
+    stringstyle=\color{sqlstring},
+    commentstyle=\color{sqlcomment}\itshape,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{black!30},
+    breaklines=true,
+    breakatwhitespace=true,
+    showstringspaces=false,
+    tabsize=2,
+    captionpos=b,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=10pt,
+    columns=fullflexible,
+    keepspaces=true
+}
+
+\sloppy
+
+\title{Sistema para Controle de Eventos Acadêmicos:\\
+Modelagem, Implantação e Avaliação de um Banco\\
+de Dados Relacional em PostgreSQL}
+
+\author{Deivid Costa dos Santos\inst{1},
+        Douglas Aleixo de Santana\inst{1},
+        Emanuel Patrick Alves Bastos\inst{1},\\
+        Igor Spinola de Albuquerque e Almeida Teles\inst{1},
+        Pedro Vitório Larchert de Oliveira\inst{1}}
+
+\address{Instituto de Computação --
+  Universidade Federal da Bahia (UFBA)\\
+  Avenida Milton Santos, s/n -- Ondina -- 40.170-110 -- Salvador -- BA -- Brasil
+  \email{\{deivid.santos,douglas.santana,emanuel.bastos,igor.teles,
+  pedro.larchert\}@ufba.br}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper describes the design, implementation and evaluation of a
+relational database for the management of academic events, developed
+in the context of the MATA60 -- Database course at the Federal
+University of Bahia. The system covers the full lifecycle of a
+scientific event, from registration and payment control to paper
+submission, peer review and proceedings publication. The conceptual
+model was elaborated using Peter Chen's notation in BrModelo and then
+translated into a relational schema deployed on PostgreSQL~16 within a
+Docker environment. Ten intermediate queries and twenty advanced
+queries were developed, together with an indexing plan whose
+performance is empirically compared.
+\end{abstract}
+
+\begin{resumo}
+Este trabalho descreve o desenvolvimento de um banco de dados
+relacional voltado ao gerenciamento de eventos acadêmicos, elaborado
+no âmbito da disciplina MATA60 --- Banco de Dados, da Universidade
+Federal da Bahia. O sistema contempla o ciclo completo de um evento
+científico, desde o controle de inscrições e pagamentos até a
+submissão, revisão por pares e publicação nos anais. O modelo
+conceitual foi elaborado com a notação de Peter Chen na ferramenta
+BrModelo e posteriormente traduzido para o modelo relacional, com
+implantação no PostgreSQL~16 em ambiente Docker. Foram desenvolvidas
+dez consultas intermediárias e vinte consultas avançadas, além de um
+plano de indexação cuja eficiência é avaliada empiricamente.
+\end{resumo}
+
+% =============================================================================
+\section{Introdução}
+\label{sec:introducao}
+
+A realização de eventos científicos envolve uma série de processos interdependentes: organização de submissões, coordenação de revisores, controle de inscrições e registro de pagamentos. Quando esses processos são gerenciados sem uma estrutura de dados adequada, surgem inconsistências, retrabalho e dificuldades na geração de relatórios confiáveis.
+
+O presente projeto propõe um banco de dados relacional para apoiar a gestão de eventos acadêmicos. A partir do estudo de caso definido pelo professor, o grupo realizou a modelagem, a implementação e a população do banco no PostgreSQL 16, além de elaborar consultas analíticas voltadas a necessidades reais de administração de eventos.
+
+As seções seguintes apresentam o estudo de caso e os requisitos levantados (Seção~\ref{sec:descritivo}), a modelagem conceitual e lógica (Seção~\ref{sec:modelagem}), a implantação via DDL (Seção~\ref{sec:implantacao}), as consultas desenvolvidas (Seção~\ref{sec:consultas}) e as considerações finais (Seção~\ref{sec:conclusao}).
+
+% =============================================================================
+\section{Descritivo do Projeto}
+\label{sec:descritivo}
+
+\subsection{Estudo de Caso Original}
+\label{subsec:caso-original}
+
+O estudo de caso atribuído pelo professor define um \textbf{Sistema para Controle
+de Eventos Acadêmicos}. A motivação parte da necessidade de gestão eficiente de
+submissões, revisões e inscrições em eventos científicos. Os requisitos originais
+são:
+
+\begin{enumerate}
+    \item Gerenciar submissões de artigos e resumos.
+    \item Acompanhar o processo de revisão por pares.
+    \item Emitir certificados de participação.
+    \item Permitir inscrições e pagamentos online.
+    \item Organizar a programação dos eventos.
+    \item Controlar a emissão de anais e proceedings.
+\end{enumerate}
+
+As tabelas principais sugeridas foram: Evento, Participante, Artigo, Revisor,
+Inscrição, Pagamento e Certificado.
+
+\subsection{Extensão Proposta ao Estudo de Caso}
+\label{subsec:caso-estendido}
+
+A análise do estudo de caso revelou oportunidades de ampliação do modelo original. As extensões a seguir foram incorporadas ao projeto:
+
+\begin{itemize}
+    \item \textbf{Tipos de publicação:} a distinção entre \emph{artigo completo}
+    e \emph{resumo} foi representada como entidade própria (\texttt{tb\_tipo\_publicacao}),
+    permitindo consultas analíticas sobre o perfil de cada evento.
+
+    \item \textbf{Status de pagamento desacoplado:} o estado financeiro da inscrição
+    foi separado em uma tabela de domínio (\texttt{tb\_status\_pagamento}) com valores
+    CONCLUIDO, PENDENTE e CANCELADO, facilitando filtros e relatórios sem uso de
+    \emph{magic numbers}.
+
+    \item \textbf{Autoria múltipla:} o relacionamento N:M entre participantes e
+    publicações (\texttt{rl\_autoria}) permite registrar coautoria e identificar
+    participantes-pesquisadores ativos.
+
+    \item \textbf{Revisão com resultado:} a tabela \texttt{rl\_revisao} armazena o
+    parecer do revisor (\texttt{st\_aprovado}) e a data da revisão, possibilitando
+    auditoria do processo de avaliação por pares.
+
+    \item \textbf{Anais como relacionamento:} a associação entre evento e publicação
+    nos anais foi modelada como tabela própria (\texttt{rl\_anais}), distinguindo
+    publicações submetidas de publicações efetivamente aceitas e publicadas.
+\end{itemize}
+
+\subsection{Requisitos do Sistema}
+\label{subsec:requisitos}
+
+\subsubsection{Requisitos Funcionais (RF)}
+\begin{description}[leftmargin=2.5cm,style=nextline]
+    \item[\textbf{RF01}] O sistema deve permitir o cadastro de eventos com nome, local, datas de início e fim, preço e número de vagas.
+    \item[\textbf{RF02}] O sistema deve permitir o cadastro de participantes com nome, CPF e e-mail únicos.
+    \item[\textbf{RF03}] O sistema deve registrar inscrições de participantes em eventos, associadas a um método e status de pagamento.
+    \item[\textbf{RF04}] O sistema deve permitir a submissão de publicações (artigos ou resumos) por participantes.
+    \item[\textbf{RF05}] O sistema deve registrar a autoria de publicações, suportando múltiplos coautores.
+    \item[\textbf{RF06}] O sistema deve gerenciar o processo de revisão por pares, associando revisores a publicações e registrando o parecer.
+    \item[\textbf{RF07}] O sistema deve controlar quais publicações aprovadas compõem os anais de cada evento.
+    \item[\textbf{RF08}] O sistema deve permitir a consulta da carga de revisão por revisor.
+    \item[\textbf{RF09}] O sistema deve fornecer relatórios financeiros por evento e por método de pagamento.
+    \item[\textbf{RF10}] O sistema deve distinguir publicações aprovadas das efetivamente apresentadas no evento.
+\end{description}
+
+\subsubsection{Requisitos Não-Funcionais (RNF)}
+\begin{description}[leftmargin=2.5cm,style=nextline]
+    \item[\textbf{RNF01}] Integridade referencial garantida via chaves estrangeiras declaradas no DDL.
+    \item[\textbf{RNF02}] Unicidade de CPF e e-mail de participantes e revisores garantida por constraints \texttt{UNIQUE}.
+    \item[\textbf{RNF03}] Nomenclatura de tabelas e colunas em português, seguindo prefixos de domínio (\texttt{tb\_} para entidades, \texttt{rl\_} para relacionamentos).
+    \item[\textbf{RNF04}] O banco deve ser executável via Docker com inicialização automática do DDL e dos dados.
+\end{description}
+
+\subsection{Delimitação do Minimundo}
+\label{subsec:minimundo}
+
+O minimundo abrange o ciclo de vida de um evento acadêmico, da abertura de inscrições à publicação dos anais. Fazem parte do escopo: eventos, participantes, inscrições, publicações, autoria, revisão por pares e anais. Não fazem parte do escopo: emissão de certificados, grade programática detalhada e integração com plataformas externas de pagamento.
+
+\begin{table}[htb]
+\centering
+\caption{Mapeamento entre elementos do minimundo e requisitos.}
+\label{tab:minimundo-requisitos}
+\small
+\begin{tabularx}{\textwidth}{|l|X|l|}
+\hline
+\textbf{Elemento} & \textbf{Descrição} & \textbf{RF} \\
+\hline
+\texttt{tb\_evento}            & Dados do evento: nome, local, datas, preço, vagas        & RF01 \\
+\hline
+\texttt{tb\_participante}      & Cadastro de pessoas: nome, CPF, e-mail                   & RF02 \\
+\hline
+\texttt{rl\_inscricao}         & Vínculo participante-evento com pagamento                & RF03 \\
+\hline
+\texttt{tb\_status\_pagamento} & Domínio: CONCLUIDO, PENDENTE, CANCELADO                  & RF03, RF09 \\
+\hline
+\texttt{tb\_publicacao}        & Submissões com título, conteúdo, aprovação e apresentação & RF04, RF10 \\
+\hline
+\texttt{tb\_tipo\_publicacao}  & Domínio: Artigo, Resumo                                  & RF04 \\
+\hline
+\texttt{rl\_autoria}           & Relação N:M participante-publicação                      & RF05 \\
+\hline
+\texttt{tb\_revisor}           & Cadastro de avaliadores                                  & RF06 \\
+\hline
+\texttt{rl\_revisao}           & Parecer do revisor com data e resultado                  & RF06, RF08 \\
+\hline
+\texttt{rl\_anais}             & Publicações aceitas vinculadas ao evento                 & RF07 \\
+\hline
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Modelagem}
+\label{sec:modelagem}
+
+\subsection{Modelo Conceitual (MER)}
+\label{subsec:mer}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{BRMODELO_SQL.jpeg}
+    \caption{Modelo Entidade-Relacionamento elaborado no BrModelo.}
+    \label{fig:mer}
+\end{figure}
+
+A Figura~\ref{fig:mer} apresenta o modelo entidade-relacionamento do sistema. As entidades centrais são \texttt{Evento}, \texttt{Participante}, \texttt{Publicacao} e \texttt{Revisor}. Os relacionamentos de cardinalidade N:M --- autoria, revisão, inscrição e anais --- foram traduzidos como tabelas associativas no modelo relacional.
+
+\subsection{Modelo Lógico}
+\label{subsec:logico}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{MODELO_LOGICO.jpeg}
+    \caption{Modelo lógico relacional.}
+    \label{fig:logico}
+\end{figure}
+
+A Figura~\ref{fig:logico} apresenta o modelo lógico relacional resultante da tradução do MER. O esquema é composto por dez tabelas, cuja notação textual é apresentada a seguir:
+
+\begin{lstlisting}[caption={Esquema lógico relacional.}, label={lst:logico}, language={}]
+tb_evento(id_evento PK, no_evento, ds_local, dh_inicio, dh_fim, vl_preco, qt_vagas)
+tb_participante(id_participante PK, no_participante, nu_cpf UNIQUE, ds_email UNIQUE)
+tb_revisor(id_revisor PK, no_revisor, nu_cpf UNIQUE)
+tb_publicacao(id_publicacao PK, no_titulo, tx_conteudo, dh_criacao, dh_atualizacao,
+              st_aprovado, st_apresentacao, cd_tipo_publicacao FK)
+tb_tipo_publicacao(id_tipo_publicacao PK, no_tipo_publicacao UNIQUE)
+tb_status_pagamento(id_pagamento PK, no_status_pagamento UNIQUE)
+rl_inscricao(nu_inscricao, id_participante FK, id_evento FK, cd_status_pagamento FK,
+             ds_metodo_pagamento, dh_pagamento, PK(nu_inscricao, id_participante, id_evento))
+rl_autoria(id_participante FK, id_publicacao FK, PK(id_participante, id_publicacao))
+rl_revisao(id_publicacao FK, id_revisor FK, st_aprovado, dt_revisao,
+           PK(id_publicacao, id_revisor))
+rl_anais(id_evento FK, id_publicacao FK, PK(id_evento, id_publicacao))
+\end{lstlisting}
+
+\subsection{Convenções de Nomenclatura}
+\label{subsec:nomenclatura}
+
+A nomenclatura adotada segue as recomendações do MAD/DATASUS e da norma ISO/IEC 11179-5. Tabelas de entidade recebem o prefixo \texttt{tb\_}; tabelas de relacionamento, o prefixo \texttt{rl\_}. As colunas seguem prefixos semânticos: \texttt{id\_} para identificadores, \texttt{no\_} para nomes, \texttt{ds\_} para descrições, \texttt{dh\_} para campos de data e hora, \texttt{st\_} para indicadores booleanos de estado, \texttt{cd\_} para códigos de referência, \texttt{vl\_} para valores monetários e \texttt{qt\_} para quantidades.
+
+% =============================================================================
+\section{Implantação}
+\label{sec:implantacao}
+
+\subsection{Script DDL}
+\label{subsec:ddl}
+
+O banco de dados foi implantado no PostgreSQL 16. O script DDL está organizado em dois blocos: o primeiro cria as tabelas com suas restrições de integridade; o segundo declara as chaves estrangeiras por meio de comandos \texttt{ALTER TABLE}, permitindo que a ordem de criação das tabelas seja independente das dependências referenciais.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- tabelas de domínio \texttt{tb\_status\_pagamento} e \texttt{tb\_tipo\_publicacao}.}, label={lst:ddl-dominio}]
+CREATE TABLE tb_status_pagamento (
+    id_pagamento INTEGER PRIMARY KEY,
+    no_status_pagamento VARCHAR(30) UNIQUE NOT NULL
+);
+
+CREATE TABLE tb_tipo_publicacao (
+    id_tipo_publicacao INTEGER PRIMARY KEY,
+    no_tipo_publicacao VARCHAR(50) UNIQUE NOT NULL
+);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- entidade \texttt{tb\_evento}.}, label={lst:ddl-evento}]
+CREATE TABLE tb_evento (
+    id_evento INTEGER PRIMARY KEY,
+    no_evento VARCHAR(100) NOT NULL,
+    ds_local VARCHAR(200) NOT NULL,
+    dh_inicio TIMESTAMP NOT NULL,
+    dh_fim TIMESTAMP NOT NULL,
+    vl_preco DECIMAL(10,2) NOT NULL,
+    qt_vagas INTEGER NOT NULL
+);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- entidades \texttt{tb\_participante} e \texttt{tb\_revisor}.}, label={lst:ddl-pessoas}]
+CREATE TABLE tb_participante (
+    id_participante INTEGER PRIMARY KEY,
+    no_participante VARCHAR(100) NOT NULL,
+    nu_cpf VARCHAR(11) UNIQUE NOT NULL,
+    ds_email VARCHAR(150) UNIQUE NOT NULL
+);
+
+CREATE TABLE tb_revisor (
+    id_revisor INTEGER PRIMARY KEY,
+    no_revisor VARCHAR(100) NOT NULL,
+    nu_cpf VARCHAR(11) UNIQUE NOT NULL
+);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- entidade \texttt{tb\_publicacao}.}, label={lst:ddl-publicacao}]
+CREATE TABLE tb_publicacao (
+    id_publicacao INTEGER PRIMARY KEY,
+    no_titulo VARCHAR(200) NOT NULL,
+    tx_conteudo TEXT NOT NULL,
+    dh_criacao TIMESTAMP NOT NULL,
+    dh_atualizacao TIMESTAMP,
+    st_aprovado BOOLEAN NOT NULL,
+    st_apresentacao BOOLEAN NOT NULL,
+    cd_tipo_publicacao INTEGER NOT NULL
+);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- relacionamento \texttt{rl\_inscricao}.}, label={lst:ddl-inscricao}]
+CREATE TABLE rl_inscricao (
+    nu_inscricao INTEGER UNIQUE NOT NULL,
+    id_participante INTEGER NOT NULL,
+    id_evento INTEGER NOT NULL,
+    cd_status_pagamento INTEGER NOT NULL,
+    ds_metodo_pagamento VARCHAR(50) NOT NULL,
+    dh_pagamento TIMESTAMP,
+    PRIMARY KEY (nu_inscricao, id_participante, id_evento)
+);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- relacionamentos \texttt{rl\_autoria}, \texttt{rl\_revisao} e \texttt{rl\_anais}.}, label={lst:ddl-relacionamentos}]
+CREATE TABLE rl_autoria (
+    id_participante INTEGER NOT NULL,
+    id_publicacao INTEGER NOT NULL,
+    PRIMARY KEY (id_participante, id_publicacao)
+);
+
+CREATE TABLE rl_revisao (
+    id_publicacao INTEGER NOT NULL,
+    id_revisor INTEGER NOT NULL,
+    st_aprovado BOOLEAN NOT NULL,
+    dt_revisao DATE NOT NULL,
+    PRIMARY KEY (id_publicacao, id_revisor)
+);
+
+CREATE TABLE rl_anais (
+    id_evento INTEGER NOT NULL,
+    id_publicacao INTEGER NOT NULL,
+    PRIMARY KEY (id_evento, id_publicacao)
+);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{tb\_publicacao} e \texttt{rl\_inscricao}.}, label={lst:fk-publicacao-inscricao}]
+ALTER TABLE tb_publicacao
+    ADD CONSTRAINT FK_tb_publicacao_tipo_publicacao
+    FOREIGN KEY (cd_tipo_publicacao) REFERENCES tb_tipo_publicacao (id_tipo_publicacao);
+
+ALTER TABLE rl_inscricao
+    ADD CONSTRAINT FK_rl_inscricao_id_evento
+    FOREIGN KEY (id_evento) REFERENCES tb_evento (id_evento);
+
+ALTER TABLE rl_inscricao
+    ADD CONSTRAINT FK_rl_inscricao_id_participante
+    FOREIGN KEY (id_participante) REFERENCES tb_participante (id_participante);
+
+ALTER TABLE rl_inscricao
+    ADD CONSTRAINT FK_rl_inscricao_status_pagamento
+    FOREIGN KEY (cd_status_pagamento) REFERENCES tb_status_pagamento (id_pagamento);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{rl\_anais} e \texttt{rl\_autoria}.}, label={lst:fk-anais-autoria}]
+ALTER TABLE rl_anais
+    ADD CONSTRAINT FK_rl_anais_id_evento
+    FOREIGN KEY (id_evento) REFERENCES tb_evento (id_evento);
+
+ALTER TABLE rl_anais
+    ADD CONSTRAINT FK_rl_anais_id_publicacao
+    FOREIGN KEY (id_publicacao) REFERENCES tb_publicacao (id_publicacao);
+
+ALTER TABLE rl_autoria
+    ADD CONSTRAINT FK_rl_autoria_participante
+    FOREIGN KEY (id_participante) REFERENCES tb_participante (id_participante);
+
+ALTER TABLE rl_autoria
+    ADD CONSTRAINT FK_rl_autoria_publicacao
+    FOREIGN KEY (id_publicacao) REFERENCES tb_publicacao (id_publicacao);
+\end{lstlisting}
+\end{minipage}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{rl\_revisao}.}, label={lst:fk-revisao}]
+ALTER TABLE rl_revisao
+    ADD CONSTRAINT FK_rl_revisao_publicacao
+    FOREIGN KEY (id_publicacao) REFERENCES tb_publicacao (id_publicacao);
+
+ALTER TABLE rl_revisao
+    ADD CONSTRAINT FK_rl_revisao_revisao
+    FOREIGN KEY (id_revisor) REFERENCES tb_revisor (id_revisor);
+\end{lstlisting}
+\end{minipage}
+
+\subsection{Ambiente de Execução}
+\label{subsec:docker}
+
+O ambiente de execução foi containerizado com Docker Compose. Ao iniciar os serviços com \texttt{docker compose up}, o PostgreSQL 16 é provisionado e os scripts de DDL e de inserção de dados são executados automaticamente pelo mecanismo \texttt{/docker-entrypoint-initdb.d/}. O arquivo \texttt{docker-compose.yml} também disponibiliza uma instância MySQL 8.0 para fins comparativos.
+
+% =============================================================================
+\section{Consultas Intermediárias}
+\label{sec:consultas}
+
+As dez consultas apresentadas nesta seção foram elaboradas com o requisito mínimo de três tabelas e ao menos duas das seguintes funções: \texttt{JOIN}, \texttt{GROUP BY}, \texttt{COUNT} e \texttt{WINDOW}.
+
+\subsection{QI01 --- Eventos com mais publicações nos anais}
+\textbf{Requisitos atendidos:} RF07 \\
+\textbf{Objetivo:} Rankear eventos pela quantidade de publicações que entraram nos anais.\\
+\textbf{Recursos:} JOIN, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QI01 -- Eventos com mais publicações nos anais.}]
+SELECT tb_evento.id_evento, tb_evento.no_evento,
+       COUNT(id_publicacao) AS tot_publi
+FROM rl_anais
+    JOIN tb_evento ON tb_evento.id_evento = rl_anais.id_evento
+GROUP BY tb_evento.id_evento, tb_evento.no_evento
+ORDER BY tot_publi DESC;
+\end{lstlisting}
+
+\subsection{QI02 --- Quantidade de coautores por publicação aprovada}
+\textbf{Requisitos atendidos:} RF04, RF05 \\
+\textbf{Objetivo:} Para cada publicação aprovada, mostrar título e número de autores.\\
+\textbf{Recursos:} JOIN, WHERE, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QI02 -- Coautores por publicação aprovada.}]
+SELECT rl_autoria.id_publicacao, no_titulo, COUNT(id_participante) AS qt_autores
+FROM rl_autoria
+    JOIN tb_publicacao ON tb_publicacao.id_publicacao = rl_autoria.id_publicacao
+WHERE st_aprovado = TRUE
+GROUP BY rl_autoria.id_publicacao, no_titulo
+ORDER BY rl_autoria.id_publicacao ASC;
+\end{lstlisting}
+
+\subsection{QI03 --- Participantes que também são autores}
+\textbf{Requisitos atendidos:} RF02, RF05 \\
+\textbf{Objetivo:} Listar participantes que publicaram pelo menos um artigo.\\
+\textbf{Recursos:} JOIN, GROUP BY.
+\begin{lstlisting}[caption={QI03 -- Participantes que também são autores.}]
+SELECT tb_participante.id_participante, no_participante
+FROM tb_participante
+    JOIN rl_autoria ON rl_autoria.id_participante = tb_participante.id_participante
+GROUP BY tb_participante.id_participante
+ORDER BY tb_participante.id_participante;
+\end{lstlisting}
+
+\subsection{QI04 --- Distribuição de status de pagamento por evento}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Mostrar quantas inscrições estão em cada status (CONCLUIDO, PENDENTE, CANCELADO) por evento.\\
+\textbf{Recursos:} JOIN, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QI04 -- Status de pagamento por evento.}]
+SELECT rl_inscricao.id_evento, no_status_pagamento,
+       COUNT(nu_inscricao) AS qt_inscricoes
+FROM rl_inscricao
+    JOIN tb_evento ON tb_evento.id_evento = rl_inscricao.id_evento
+    JOIN tb_status_pagamento
+        ON tb_status_pagamento.id_pagamento = rl_inscricao.cd_status_pagamento
+GROUP BY rl_inscricao.id_evento, rl_inscricao.cd_status_pagamento, no_status_pagamento
+ORDER BY rl_inscricao.id_evento ASC;
+\end{lstlisting}
+
+\subsection{QI05 --- Publicações por tipo em cada evento}
+\textbf{Requisitos atendidos:} RF04, RF07 \\
+\textbf{Objetivo:} Contar quantos artigos e resumos cada evento publicou nos anais.\\
+\textbf{Recursos:} INNER JOIN (4 tabelas), GROUP BY, COUNT.
+\begin{lstlisting}[caption={QI05 -- Publicações por tipo em cada evento.}]
+SELECT tb_evento.no_evento, tb_tipo_publicacao.no_tipo_publicacao,
+       COUNT(*) AS total
+FROM tb_evento
+    INNER JOIN rl_anais ON tb_evento.id_evento = rl_anais.id_evento
+    INNER JOIN tb_publicacao
+        ON tb_publicacao.id_publicacao = rl_anais.id_publicacao
+    INNER JOIN tb_tipo_publicacao
+        ON tb_publicacao.cd_tipo_publicacao = tb_tipo_publicacao.id_tipo_publicacao
+GROUP BY tb_evento.no_evento, tb_tipo_publicacao.no_tipo_publicacao
+ORDER BY total DESC;
+\end{lstlisting}
+
+\subsection{QI06 --- Eventos com 100\% das inscrições pagas}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Listar eventos sem inadimplência (nenhuma inscrição PENDENTE ou CANCELADA).\\
+\textbf{Recursos:} JOIN, subquery, WHERE.
+\begin{lstlisting}[caption={QI06 -- Eventos com todas as inscrições CONCLUIDO.}]
+SELECT DISTINCT tb_evento.id_evento, no_evento
+FROM tb_evento
+    JOIN (
+        SELECT rl_inscricao.id_evento,
+               COUNT(nu_inscricao) AS tot_sem_pagar
+        FROM rl_inscricao
+            JOIN tb_evento ON tb_evento.id_evento = rl_inscricao.id_evento
+        WHERE cd_status_pagamento = 2 OR cd_status_pagamento = 3
+        GROUP BY rl_inscricao.id_evento
+    ) ta ON ta.id_evento = tb_evento.id_evento
+WHERE ta.tot_sem_pagar < 1
+ORDER BY tb_evento.id_evento ASC;
+\end{lstlisting}
+
+\subsection{QI07 --- Carga de revisão por revisor}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Mostrar quantas publicações cada revisor avaliou, ordenado por carga decrescente.\\
+\textbf{Recursos:} JOIN, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QI07 -- Carga de revisão por revisor.}]
+SELECT r.id_revisor, r.no_revisor,
+       COUNT(rl.id_publicacao) AS qtd_publicacoes_revisadas
+FROM tb_revisor r
+    JOIN rl_revisao rl ON r.id_revisor = rl.id_revisor
+GROUP BY r.id_revisor, r.no_revisor
+ORDER BY qtd_publicacoes_revisadas DESC;
+\end{lstlisting}
+
+\subsection{QI08 --- Publicações aprovadas e apresentadas por evento}
+\textbf{Requisitos atendidos:} RF07, RF10 \\
+\textbf{Objetivo:} Contar quantas publicações foram aprovadas e efetivamente apresentadas em cada evento.\\
+\textbf{Recursos:} JOIN, WHERE, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QI08 -- Aprovadas e apresentadas por evento.}]
+SELECT tb_evento.no_evento, COUNT(*) AS qt_apresentadas
+FROM tb_evento
+    JOIN rl_anais ON rl_anais.id_evento = tb_evento.id_evento
+    JOIN tb_publicacao ON tb_publicacao.id_publicacao = rl_anais.id_publicacao
+WHERE tb_publicacao.st_aprovado = TRUE
+  AND tb_publicacao.st_apresentacao = TRUE
+GROUP BY tb_evento.no_evento
+ORDER BY tb_evento.no_evento ASC;
+\end{lstlisting}
+
+\subsection{QI09 --- Receita por método de pagamento}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Somar a receita confirmada (CONCLUIDO) por método (crédito, débito, pix) em cada evento.\\
+\textbf{Recursos:} JOIN, WHERE, GROUP BY, SUM.
+\begin{lstlisting}[caption={QI09 -- Receita por método de pagamento.}]
+SELECT tb_evento.no_evento, rl_inscricao.ds_metodo_pagamento,
+       COUNT(*) AS total_metodo,
+       SUM(tb_evento.vl_preco) AS total_vendas
+FROM tb_evento
+    JOIN rl_inscricao ON rl_inscricao.id_evento = tb_evento.id_evento
+    JOIN tb_status_pagamento
+        ON tb_status_pagamento.id_pagamento = rl_inscricao.cd_status_pagamento
+WHERE tb_status_pagamento.no_status_pagamento = 'CONCLUIDO'
+GROUP BY tb_evento.no_evento, rl_inscricao.ds_metodo_pagamento
+ORDER BY total_vendas DESC;
+\end{lstlisting}
+
+\subsection{QI10 --- Ranking de eventos por receita (WINDOW)}
+\textbf{Requisitos atendidos:} RF09 \\
+\textbf{Objetivo:} Usar \texttt{RANK()} para posicionar cada evento pelo total de receita confirmada.\\
+\textbf{Recursos:} JOIN, GROUP BY, SUM, WINDOW (RANK).
+\begin{lstlisting}[caption={QI10 -- Ranking de receita com RANK().}]
+SELECT no_evento, total_receita,
+       RANK() OVER (ORDER BY total_receita DESC) AS posicao
+FROM (
+    SELECT tb_evento.no_evento,
+           SUM(tb_evento.vl_preco) AS total_receita
+    FROM tb_evento
+        JOIN rl_inscricao ON rl_inscricao.id_evento = tb_evento.id_evento
+        JOIN tb_status_pagamento
+            ON tb_status_pagamento.id_pagamento = rl_inscricao.cd_status_pagamento
+    WHERE tb_status_pagamento.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY tb_evento.no_evento
+) ranking;
+\end{lstlisting}
+
+% =============================================================================
+\section{Consultas Avançadas}
+\label{sec:consultas-adv}
+% Regra: mínimo 3 tabelas + 3 das funções {SUB-CONSULTAS, JOIN, GROUP BY, WINDOW, COUNT}.
+% São 20 consultas avançadas.
+
+\subsection{Consulta Avançada 01 --- Participantes que publicaram em todos os eventos em que se inscreveram}
+\textbf{Requisitos atendidos:} RF02, RF03, RF05, RF07 \\
+\textbf{Objetivo:} Listar participantes que possuem publicação aprovada em cada evento no qual se inscreveram. \\
+\textbf{Recursos utilizados:} SUB-CONSULTAS, JOIN, GROUP BY, COUNT.
+\begin{lstlisting}[caption={QA01 --- Participantes que publicaram em todos os eventos em que se inscreveram.}]
+SELECT p.id_participante, p.no_participante,
+       COUNT(DISTINCT i.id_evento) AS eventos_inscritos
+FROM tb_participante p
+    JOIN rl_inscricao i ON p.id_participante = i.id_participante
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM rl_inscricao i2
+    WHERE i2.id_participante = p.id_participante
+      AND NOT EXISTS (
+          SELECT 1
+          FROM rl_autoria a
+              JOIN tb_publicacao pub ON a.id_publicacao = pub.id_publicacao
+              JOIN rl_anais an ON pub.id_publicacao = an.id_publicacao
+          WHERE a.id_participante = p.id_participante
+            AND an.id_evento = i2.id_evento
+            AND pub.st_aprovado = TRUE
+      )
+)
+GROUP BY p.id_participante, p.no_participante
+ORDER BY eventos_inscritos DESC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 02 --- Top 3 revisores mais rigorosos (maior taxa de reprovação)}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Calcular a taxa de reprovação de cada revisor e listar os três com maior índice, apoiando a análise do perfil de rigor dos revisores. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTA, WINDOW (RANK).
+\begin{lstlisting}[caption={QA02 --- Top 3 revisores mais rigorosos.}]
+SELECT id_revisor, no_revisor, total_revisoes,
+       total_reprovacoes, taxa_reprovacao, ranking
+FROM (
+    SELECT r.id_revisor, r.no_revisor,
+           COUNT(*) AS total_revisoes,
+           SUM(CASE WHEN rv.st_aprovado = FALSE THEN 1 ELSE 0 END) AS total_reprovacoes,
+           ROUND(SUM(CASE WHEN rv.st_aprovado = FALSE THEN 1 ELSE 0 END) * 100.0
+                 / COUNT(*), 2) AS taxa_reprovacao,
+           RANK() OVER (
+               ORDER BY SUM(CASE WHEN rv.st_aprovado = FALSE THEN 1 ELSE 0 END) * 100.0
+                        / COUNT(*) DESC
+           ) AS ranking
+    FROM tb_revisor r
+        JOIN rl_revisao rv ON rv.id_revisor = r.id_revisor
+        JOIN tb_publicacao p ON p.id_publicacao = rv.id_publicacao
+    GROUP BY r.id_revisor, r.no_revisor
+) ranking_revisores
+WHERE ranking <= 3
+ORDER BY ranking;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 03 --- Evento mais lucrativo de cada local}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Para cada \texttt{ds\_local}, identificar qual evento obteve a maior receita confirmada (pagamentos com status \textit{CONCLUIDO}), apoiando a análise de performance por localização. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUB-CONSULTA, WINDOW (RANK com PARTITION).
+\begin{lstlisting}[caption={QA03 --- Evento mais lucrativo de cada local.}]
+SELECT *
+FROM (
+    SELECT e.ds_local, e.id_evento, e.no_evento,
+           SUM(e.vl_preco) AS receita_confirmada,
+           RANK() OVER (
+               PARTITION BY e.ds_local
+               ORDER BY SUM(e.vl_preco) DESC
+           ) AS ranking
+    FROM tb_evento e
+        JOIN rl_inscricao i ON i.id_evento = e.id_evento
+        JOIN tb_status_pagamento sp ON sp.id_pagamento = i.cd_status_pagamento
+    WHERE sp.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY e.ds_local, e.id_evento, e.no_evento
+) ranking_local
+WHERE ranking = 1
+ORDER BY ds_local;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 04 --- Participantes que gastaram acima da média geral}
+\textbf{Requisitos atendidos:} RF02, RF03, RF09 \\
+\textbf{Objetivo:} Listar participantes cujo gasto total em inscrições com pagamento concluído supera a média geral de gastos, identificando clientes \emph{premium}. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUM, SUB-CONSULTA, WINDOW (AVG OVER).
+\begin{lstlisting}[caption={QA04 --- Participantes que gastaram acima da média geral.}]
+SELECT *
+FROM (
+    SELECT p.id_participante, p.no_participante,
+           SUM(e.vl_preco) AS gasto_total,
+           AVG(SUM(e.vl_preco)) OVER () AS media_geral
+    FROM tb_participante p
+        JOIN rl_inscricao i ON i.id_participante = p.id_participante
+        JOIN tb_evento e ON e.id_evento = i.id_evento
+        JOIN tb_status_pagamento sp ON sp.id_pagamento = i.cd_status_pagamento
+    WHERE sp.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY p.id_participante, p.no_participante
+) dados
+WHERE gasto_total > media_geral
+ORDER BY gasto_total DESC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 05 --- Ranking de publicações pelo número de coautores}
+\textbf{Requisitos atendidos:} RF04, RF05, RF07 \\
+\textbf{Objetivo:} Listar todas as publicações aprovadas com a quantidade de coautores e sua posição em um ranking de colaboração. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (RANK).
+\begin{lstlisting}[caption={QA05 --- Ranking de publicações pelo número de coautores.}]
+SELECT tb_publicacao.id_publicacao,
+       tb_publicacao.no_titulo,
+       COUNT(rl_autoria.id_participante) AS qt_coautores,
+       RANK() OVER (
+           ORDER BY COUNT(rl_autoria.id_participante) DESC
+       ) AS posicao
+FROM tb_publicacao
+    JOIN rl_autoria ON rl_autoria.id_publicacao = tb_publicacao.id_publicacao
+    JOIN tb_participante ON tb_participante.id_participante = rl_autoria.id_participante
+WHERE tb_publicacao.st_aprovado = TRUE
+GROUP BY tb_publicacao.id_publicacao, tb_publicacao.no_titulo
+ORDER BY posicao, tb_publicacao.id_publicacao;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 06 --- Revisores que nunca reprovaram nenhuma publicação}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Listar revisores cujo \texttt{st\_aprovado} em todas as revisões realizadas é verdadeiro, indicando possível leniência no processo de avaliação. \\
+\textbf{Recursos utilizados:} SUB-CONSULTA (NOT IN), LEFT JOIN, GROUP BY, HAVING, COUNT.
+\begin{lstlisting}[caption={QA06 --- Revisores que nunca reprovaram nenhuma publicação.}]
+SELECT tb_revisor.no_revisor,
+       COUNT(rl_revisao.id_publicacao) AS total_revisao
+FROM tb_revisor
+    LEFT JOIN rl_revisao ON rl_revisao.id_revisor = tb_revisor.id_revisor
+    LEFT JOIN tb_publicacao ON tb_publicacao.id_publicacao = rl_revisao.id_publicacao
+WHERE tb_revisor.id_revisor NOT IN (
+    SELECT id_revisor
+    FROM rl_revisao
+    WHERE rl_revisao.st_aprovado = FALSE
+)
+GROUP BY tb_revisor.no_revisor
+HAVING COUNT(rl_revisao.id_publicacao) > 0;
+\end{lstlisting}
+\subsection{Consulta Avançada 07 --- Eventos com receita acima da média (com posição no ranking)}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Listar eventos cuja receita proveniente de inscrições com pagamento concluído supera a média geral, exibindo sua posição em um ranking de receita. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUM, SUB-CONSULTA, WINDOW (RANK).
+\begin{lstlisting}[caption={QA07 --- Eventos com receita acima da média.}]
+SELECT id_evento, no_evento, receita,
+       RANK() OVER (ORDER BY receita DESC) AS posicao
+FROM (
+    SELECT tb_evento.id_evento, tb_evento.no_evento,
+           SUM(tb_evento.vl_preco) AS receita
+    FROM tb_evento
+        JOIN rl_inscricao ON rl_inscricao.id_evento = tb_evento.id_evento
+        JOIN tb_status_pagamento ON tb_status_pagamento.id_pagamento
+                                  = rl_inscricao.cd_status_pagamento
+    WHERE tb_status_pagamento.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY tb_evento.id_evento, tb_evento.no_evento
+) receita_por_evento
+WHERE receita > (
+    SELECT AVG(receita)
+    FROM (
+        SELECT SUM(tb_evento.vl_preco) AS receita
+        FROM tb_evento
+            JOIN rl_inscricao ON rl_inscricao.id_evento = tb_evento.id_evento
+            JOIN tb_status_pagamento ON tb_status_pagamento.id_pagamento
+                                      = rl_inscricao.cd_status_pagamento
+        WHERE tb_status_pagamento.no_status_pagamento = 'CONCLUIDO'
+        GROUP BY tb_evento.id_evento
+    ) med
+)
+ORDER BY posicao;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 08 --- Participantes com duas ou mais inscrições no mesmo mês}
+\textbf{Requisitos atendidos:} RF02, RF03 \\
+\textbf{Objetivo:} Listar participantes que efetuaram duas ou mais inscrições no mesmo mês e ano de pagamento, indicando comportamento de consumo intenso. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, HAVING, EXTRACT.
+\begin{lstlisting}[caption={QA08 --- Participantes com duas ou mais inscrições no mesmo mês.}]
+SELECT tb_participante.id_participante,
+       tb_participante.no_participante,
+       EXTRACT(MONTH FROM rl_inscricao.dh_pagamento) AS mes,
+       EXTRACT(YEAR  FROM rl_inscricao.dh_pagamento) AS ano,
+       COUNT(*) AS qt_inscricoes
+FROM tb_participante
+    JOIN rl_inscricao ON rl_inscricao.id_participante = tb_participante.id_participante
+    JOIN tb_evento ON tb_evento.id_evento = rl_inscricao.id_evento
+WHERE rl_inscricao.dh_pagamento IS NOT NULL
+GROUP BY tb_participante.id_participante,
+         tb_participante.no_participante,
+         EXTRACT(MONTH FROM rl_inscricao.dh_pagamento),
+         EXTRACT(YEAR  FROM rl_inscricao.dh_pagamento)
+HAVING COUNT(*) > 1
+ORDER BY qt_inscricoes DESC, no_participante;
+\end{lstlisting}
+\subsection{Consulta Avançada 09 --- Autores com publicação aprovada em dois ou mais tipos diferentes}
+\textbf{Requisitos atendidos:} RF04, RF05 \\
+\textbf{Objetivo:} Listar autores que possuem publicações aprovadas em mais de um tipo (por exemplo, Artigo e Resumo), identificando pesquisadores versáteis. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT (DISTINCT), HAVING.
+\begin{lstlisting}[caption={QA09 --- Autores com publicação aprovada em dois ou mais tipos diferentes.}]
+SELECT p.id_participante,
+       p.no_participante,
+       COUNT(DISTINCT pub.cd_tipo_publicacao) AS qt_tipos_distintos,
+       STRING_AGG(DISTINCT tp.no_tipo_publicacao, ', ') AS tipos_publicados
+FROM tb_participante p
+    JOIN rl_autoria rau ON p.id_participante = rau.id_participante
+    JOIN tb_publicacao pub ON rau.id_publicacao = pub.id_publicacao
+    JOIN tb_tipo_publicacao tp ON pub.cd_tipo_publicacao = tp.id_tipo_publicacao
+WHERE pub.st_aprovado = TRUE
+GROUP BY p.id_participante, p.no_participante
+HAVING COUNT(DISTINCT pub.cd_tipo_publicacao) >= 2
+ORDER BY qt_tipos_distintos DESC;
+\end{lstlisting}
+\textbf{Requisitos atendidos:} RF04, RF05, RF07 \\
+\textbf{Objetivo:} Listar autores que possuem publicações aprovadas em mais de um tipo (por exemplo, Artigo e Resumo), identificando pesquisadores versáteis. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT (DISTINCT), HAVING.
+
+\subsection{Consulta Avançada 10 --- Posição de cada evento dentro do seu local}
+\textbf{Requisitos atendidos:} RF01, RF03 \\
+\textbf{Objetivo:} Usar \texttt{RANK() OVER (PARTITION BY ds\_local)} para ranquear eventos dentro de cada local, permitindo comparações entre eventos do mesmo espaço. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (RANK com PARTITION).
+\begin{lstlisting}[caption={QA10 --- Posição de cada evento dentro do seu local.}]
+SELECT *,
+       RANK() OVER (PARTITION BY ds_local ORDER BY qt_inscritos DESC) AS rank_no_local
+FROM (
+    SELECT e.id_evento,
+           e.no_evento,
+           e.qt_vagas,
+           e.ds_local,
+           COUNT(ins.nu_inscricao) AS qt_inscritos
+    FROM tb_evento e
+        JOIN rl_inscricao ins ON e.id_evento = ins.id_evento
+        JOIN tb_status_pagamento st ON ins.cd_status_pagamento = st.id_pagamento
+    WHERE st.no_status_pagamento = 'CONCLUIDO'
+    GROUP BY e.id_evento, e.no_evento, e.qt_vagas, e.ds_local
+) AS base
+ORDER BY ds_local, rank_no_local;
+\end{lstlisting}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Usar \texttt{RANK() OVER (PARTITION BY ds\_local)} para ranquear eventos dentro de cada local e permitir a comparação entre eventos da mesma localidade. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (RANK com PARTITION).
+
+\subsection{Consulta Avançada 11 --- Diferença entre receita real e potencial}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Mostrar, por evento, a receita potencial (todas as inscrições) versus a receita real (somente \textit{CONCLUIDO}) e a perda percentual, medindo inadimplência. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUB-CONSULTAS.
+\begin{lstlisting}[caption={QA11 --- Diferença entre receita real e potencial.}]
+SELECT pot.id_evento,
+       pot.no_evento,
+       pot.vl_potencial,
+       real.vl_real,
+       ROUND(((pot.vl_potencial - real.vl_real)
+              / pot.vl_potencial * 100), 2) AS perc_perda
+FROM (
+    SELECT e.id_evento,
+           e.no_evento,
+           e.vl_preco,
+           COUNT(ins.nu_inscricao) AS qt_inscritos,
+           (e.vl_preco * COUNT(ins.nu_inscricao)) AS vl_potencial
+    FROM tb_evento e
+        JOIN rl_inscricao ins ON e.id_evento = ins.id_evento
+    GROUP BY e.id_evento, e.no_evento, e.vl_preco
+) AS pot
+    JOIN (
+        SELECT e.id_evento,
+               (e.vl_preco * COUNT(ins.nu_inscricao)) AS vl_real
+        FROM tb_evento e
+            JOIN rl_inscricao ins ON e.id_evento = ins.id_evento
+            JOIN tb_status_pagamento st ON ins.cd_status_pagamento = st.id_pagamento
+        WHERE st.no_status_pagamento = 'CONCLUIDO'
+        GROUP BY e.id_evento, e.vl_preco
+    ) AS real ON pot.id_evento = real.id_evento
+ORDER BY perc_perda DESC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 12 --- Top 5 publicações com mais revisões}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Listar as cinco publicações que passaram pelo maior número de revisões, identificando publicações controversas. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (ROW\_NUMBER).
+\begin{lstlisting}[caption={QA12 --- Top 5 publicações com mais revisões (por tipo).}]
+SELECT *
+FROM (
+    SELECT pub.id_publicacao,
+           pub.no_titulo,
+           tp.no_tipo_publicacao,
+           COUNT(rev.id_revisor) AS qt_revisoes,
+           ROW_NUMBER() OVER (
+               PARTITION BY tp.no_tipo_publicacao
+               ORDER BY COUNT(rev.id_revisor) DESC
+           ) AS row_num
+    FROM tb_publicacao pub
+        JOIN rl_revisao rev ON pub.id_publicacao = rev.id_publicacao
+        JOIN tb_tipo_publicacao tp ON pub.cd_tipo_publicacao = tp.id_tipo_publicacao
+    GROUP BY pub.id_publicacao, pub.no_titulo, tp.no_tipo_publicacao
+) AS base
+WHERE row_num <= 5
+ORDER BY no_tipo_publicacao, row_num;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 13 --- Participantes inscritos no evento mais caro}
+\textbf{Requisitos atendidos:} RF02, RF03 \\
+\textbf{Objetivo:} Listar o nome e o e-mail dos participantes inscritos no evento de maior preço, identificando o público de alto valor. A subquery aninhada usa \texttt{MAX(vl\_preco)} para tratar empates --- todos os eventos com o preço máximo entram. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, SUB-CONSULTAS (aninhadas).
+\begin{lstlisting}[caption={QA13 --- Participantes inscritos no(s) evento(s) mais caro(s).}]
+SELECT p.no_participante, p.ds_email
+FROM rl_inscricao AS i
+    JOIN tb_participante AS p ON i.id_participante = p.id_participante
+WHERE i.id_evento IN (
+    SELECT id_evento FROM tb_evento
+    WHERE vl_preco = (SELECT MAX(vl_preco) FROM tb_evento)
+)
+GROUP BY p.no_participante, p.ds_email;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 14 --- Eventos com média de publicações por participante maior que 1}
+\textbf{Requisitos atendidos:} RF03, RF05, RF07 \\
+\textbf{Objetivo:} Mostrar eventos nos quais, em média, cada participante inscrito tem mais de uma publicação aprovada, sinalizando eventos com alto perfil acadêmico. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTAS.
+\begin{lstlisting}[caption={QA14 --- Eventos com média de publicações por inscrito maior que 1.}]
+SELECT ev.id_evento, ev.no_evento, t.media_pub_por_inscrito
+FROM tb_evento ev
+    JOIN (
+        SELECT an.id_evento,
+               ROUND(COUNT(DISTINCT an.id_publicacao) * 1.0
+                     / COUNT(DISTINCT i.id_participante), 2) AS media_pub_por_inscrito
+        FROM rl_anais an
+            JOIN rl_autoria au ON au.id_publicacao = an.id_publicacao
+            JOIN rl_inscricao i ON i.id_evento = an.id_evento
+                               AND i.id_participante = au.id_participante
+            JOIN tb_publicacao pb ON pb.id_publicacao = an.id_publicacao
+        GROUP BY an.id_evento
+        HAVING COUNT(DISTINCT an.id_publicacao) * 1.0
+               / COUNT(DISTINCT i.id_participante) > 1
+    ) t ON t.id_evento = ev.id_evento;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 15 --- Revisores com taxa de aprovação acima da média geral}
+\textbf{Requisitos atendidos:} RF06, RF08 \\
+\textbf{Objetivo:} Calcular a taxa de aprovação de cada revisor e listar aqueles cuja taxa supera a média geral, indicando perfis mais permissivos. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUB-CONSULTAS.
+\begin{lstlisting}[caption={QA15 --- Revisores com taxa de aprovação acima da média geral.}]
+SELECT rv.id_revisor,
+       rv.no_revisor,
+       COUNT(*) AS qtd_revisoes,
+       ROUND(COUNT(*) FILTER (WHERE r.st_aprovado) * 1.0
+             / COUNT(*), 4) AS taxa_aprovacao
+FROM tb_revisor rv
+    JOIN rl_revisao r ON r.id_revisor = rv.id_revisor
+    JOIN tb_publicacao p ON p.id_publicacao = r.id_publicacao
+GROUP BY rv.id_revisor, rv.no_revisor
+HAVING COUNT(*) FILTER (WHERE r.st_aprovado) * 1.0 / COUNT(*) > (
+    SELECT COUNT(*) FILTER (WHERE st_aprovado) * 1.0 / COUNT(*)
+    FROM rl_revisao
+)
+ORDER BY taxa_aprovacao DESC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 16 --- Receita acumulada por evento (ordem cronológica)}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Usar \texttt{SUM() OVER (ORDER BY dh\_inicio)} para apresentar a receita acumulada ao longo do tempo, permitindo análise temporal de faturamento. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, WINDOW (SUM acumulada).
+\begin{lstlisting}[caption={QA16 --- Receita acumulada por evento (ordem cronológica).}]
+SELECT ev.id_evento,
+       ev.no_evento,
+       ev.dh_inicio,
+       SUM(ev.vl_preco) AS receita_evento,
+       SUM(SUM(ev.vl_preco)) OVER (ORDER BY ev.dh_inicio) AS receita_acumulada
+FROM tb_evento ev
+    JOIN rl_inscricao i ON i.id_evento = ev.id_evento
+    JOIN tb_status_pagamento sp ON sp.id_pagamento = i.cd_status_pagamento
+WHERE sp.no_status_pagamento = 'CONCLUIDO'
+GROUP BY ev.id_evento, ev.no_evento, ev.dh_inicio
+ORDER BY ev.dh_inicio;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 17 --- Parcerias frequentes de coautoria}
+\textbf{Requisitos atendidos:} RF02, RF04, RF05 \\
+\textbf{Objetivo:} Identificar pares de pesquisadores (identificados pelo CPF) que coautoraram em mais de uma publicação, revelando grupos de pesquisa recorrentes. A consulta utiliza \emph{self-join} sobre \texttt{rl\_autoria} com a condição \texttt{id\_participante < id\_participante} para evitar pares duplicados e auto-pares. \\
+\textbf{Recursos utilizados:} JOIN (self-join), GROUP BY, COUNT, SUB-CONSULTAS.
+\begin{lstlisting}[caption={QA17 --- Parcerias frequentes de coautoria (pares com >1 publicação em comum).}]
+SELECT p1.no_participante AS pesquisador_1,
+       p1.nu_cpf          AS cpf_1,
+       p2.no_participante AS pesquisador_2,
+       p2.nu_cpf          AS cpf_2,
+       COUNT(DISTINCT pb.id_publicacao) AS qtd_coautorias
+FROM rl_autoria au1
+    JOIN rl_autoria au2     ON au1.id_publicacao  = au2.id_publicacao
+                           AND au1.id_participante < au2.id_participante
+    JOIN tb_participante p1 ON p1.id_participante = au1.id_participante
+    JOIN tb_participante p2 ON p2.id_participante = au2.id_participante
+    JOIN tb_publicacao pb   ON pb.id_publicacao   = au1.id_publicacao
+WHERE pb.id_publicacao IN (
+    SELECT id_publicacao
+    FROM rl_autoria
+    GROUP BY id_publicacao
+    HAVING COUNT(*) > 1
+)
+GROUP BY p1.no_participante, p1.nu_cpf, p2.no_participante, p2.nu_cpf
+HAVING COUNT(DISTINCT pb.id_publicacao) > 1
+ORDER BY qtd_coautorias DESC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 18 --- Top 3 autores mais publicados em cada evento}
+\textbf{Requisitos atendidos:} RF04, RF05, RF07 \\
+\textbf{Objetivo:} Para cada evento, mostrar os três autores com mais publicações aprovadas, destacando referências por evento. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, WINDOW (ROW\_NUMBER com PARTITION).
+\begin{lstlisting}[caption={QA18 --- Top 3 autores mais publicados em cada evento.}]
+SELECT id_evento, id_participante, no_participante
+FROM (
+    SELECT id_evento,
+           id_participante,
+           no_participante,
+           COUNT(id_publicacao) AS tot_publi_evento,
+           ROW_NUMBER() OVER (
+               PARTITION BY id_evento
+               ORDER BY COUNT(id_publicacao) DESC
+           ) AS posicao
+    FROM (
+        SELECT rl_anais.id_evento,
+               tb_participante.id_participante,
+               no_participante,
+               rl_anais.id_publicacao
+        FROM rl_anais
+            JOIN rl_autoria ON rl_autoria.id_publicacao = rl_anais.id_publicacao
+            JOIN tb_participante ON tb_participante.id_participante = rl_autoria.id_participante
+        GROUP BY id_evento, tb_participante.id_participante, rl_anais.id_publicacao
+    ) AS evento_autor_pub
+    GROUP BY id_evento, id_participante, no_participante
+) AS rank_autores
+WHERE posicao <= 3
+ORDER BY id_evento ASC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 19 --- Eventos onde a maioria pagou via PIX}
+\textbf{Requisitos atendidos:} RF03, RF09 \\
+\textbf{Objetivo:} Listar eventos em que mais de 40\% das inscrições com status \textit{CONCLUIDO} foram pagas via PIX, suportando análise de preferência de método de pagamento. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, HAVING, SUB-CONSULTAS.
+\begin{lstlisting}[caption={QA19 --- Eventos onde mais de 40\% pagaram via PIX.}]
+SELECT id_evento
+FROM (
+    SELECT id_evento,
+           COUNT(CASE WHEN ds_metodo_pagamento = 'pix' THEN 1 END) AS total_pix,
+           COUNT(nu_inscricao) AS total_pago
+    FROM rl_inscricao
+    WHERE cd_status_pagamento = 1
+    GROUP BY id_evento
+) AS por_evento
+WHERE total_pix > total_pago * 0.4
+ORDER BY id_evento ASC;
+\end{lstlisting}
+
+\subsection{Consulta Avançada 20 --- Ficha completa do participante (relatório consolidado)}
+\textbf{Requisitos atendidos:} RF02, RF03, RF05, RF07, RF09 \\
+\textbf{Objetivo:} Para cada participante, consolidar total de eventos, total gasto, total de publicações aprovadas e ranking de gasto, formando um \textit{dashboard} individual. \\
+\textbf{Recursos utilizados:} JOIN, GROUP BY, COUNT, SUM, WINDOW (RANK).
+\begin{lstlisting}[caption={QA20 --- Ficha completa do participante (relatório consolidado).}]
+SELECT tb_participante.id_participante,
+       COUNT(rl_inscricao.id_evento) AS tot_eventos,
+       COUNT(CASE WHEN st_aprovado = TRUE THEN 1 END) AS tot_publicacoes_aprovadas,
+       SUM(vl_preco) AS tot_gastos_em_eventos,
+       RANK() OVER (ORDER BY SUM(vl_preco) DESC) AS rank_maior_gasto
+FROM tb_participante
+    LEFT JOIN rl_inscricao ON rl_inscricao.id_participante = tb_participante.id_participante
+    LEFT JOIN tb_evento ON tb_evento.id_evento = rl_inscricao.id_evento
+    LEFT JOIN rl_autoria ON rl_autoria.id_participante = tb_participante.id_participante
+    LEFT JOIN tb_publicacao ON tb_publicacao.id_publicacao = rl_autoria.id_publicacao
+GROUP BY tb_participante.id_participante;
+\end{lstlisting}
+
+\subsection{Mapa Consulta $\times$ Requisito}
+
+\small
+\begin{longtable}{|c|l|l|p{6.5cm}|}
+\caption{Associação entre consultas, requisitos atendidos e recursos SQL utilizados.}
+\label{tab:consultas-req}\\
+\hline
+\textbf{ID} & \textbf{Tipo} & \textbf{Requisito} & \textbf{Recursos SQL} \\
+\hline
+\endfirsthead
+\hline
+\textbf{ID} & \textbf{Tipo} & \textbf{Requisito} & \textbf{Recursos SQL} \\
+\hline
+\endhead
+QI01 & Intermediária & RF07 & JOIN, GROUP BY, COUNT \\
+QI02 & Intermediária & RF04, RF05 & JOIN, WHERE, GROUP BY, COUNT \\
+QI03 & Intermediária & RF02, RF05 & JOIN, GROUP BY \\
+QI04 & Intermediária & RF03, RF09 & JOIN, GROUP BY, COUNT \\
+QI05 & Intermediária & RF04, RF07 & INNER JOIN (4 tabelas), GROUP BY, COUNT \\
+QI06 & Intermediária & RF03, RF09 & JOIN, subquery, WHERE \\
+QI07 & Intermediária & RF06, RF08 & JOIN, GROUP BY, COUNT \\
+QI08 & Intermediária & RF07, RF10 & JOIN, WHERE, GROUP BY, COUNT \\
+QI09 & Intermediária & RF03, RF09 & JOIN, WHERE, GROUP BY, SUM \\
+QI10 & Intermediária & RF09 & JOIN, GROUP BY, SUM, RANK() WINDOW \\
+\hline
+QA01 & Avançada & RF02, RF03, RF05, RF07 & SUB-QUERY, JOIN, GROUP BY, COUNT \\
+QA02 & Avançada & RF06, RF08 & JOIN, GROUP BY, COUNT, SUB-QUERY, RANK() WINDOW \\
+QA03 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUB-QUERY, RANK() WINDOW \\
+QA04 & Avançada & RF02, RF03, RF09 & JOIN, GROUP BY, SUM, SUB-QUERY, AVG() WINDOW \\
+QA05 & Avançada & RF04, RF05, RF07 & JOIN, GROUP BY, COUNT, RANK() WINDOW \\
+QA06 & Avançada & RF06, RF08 & SUB-QUERY, LEFT JOIN, GROUP BY, HAVING, COUNT \\
+QA07 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUM, SUB-QUERY, RANK() WINDOW \\
+QA08 & Avançada & RF02, RF03 & JOIN, GROUP BY, COUNT, HAVING, EXTRACT \\
+QA09 & Avançada & RF04, RF05, RF07 & JOIN, GROUP BY, COUNT (DISTINCT), HAVING \\
+QA10 & Avançada & RF03, RF09 & JOIN, GROUP BY, COUNT, RANK() WINDOW (PARTITION) \\
+QA11 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUB-QUERY \\
+QA12 & Avançada & RF06, RF08 & JOIN, GROUP BY, COUNT, ROW\_NUMBER() WINDOW \\
+QA13 & Avançada & RF02, RF03 & JOIN, SUB-QUERY \\
+QA14 & Avançada & RF03, RF05, RF07 & JOIN, GROUP BY, COUNT, SUB-QUERY \\
+QA15 & Avançada & RF06, RF08 & JOIN, GROUP BY, COUNT, SUB-QUERY \\
+QA16 & Avançada & RF03, RF09 & JOIN, GROUP BY, SUM() WINDOW acumulada \\
+QA17 & Avançada & RF02, RF04, RF05 & JOIN (self), GROUP BY, COUNT, SUB-QUERY \\
+QA18 & Avançada & RF04, RF05, RF07 & JOIN, GROUP BY, COUNT, ROW\_NUMBER() WINDOW (PARTITION) \\
+QA19 & Avançada & RF03, RF09 & JOIN, GROUP BY, COUNT, HAVING, SUB-QUERY \\
+QA20 & Avançada & RF02, RF03, RF05, RF07, RF09 & JOIN, GROUP BY, COUNT, SUB-QUERY, RANK() WINDOW \\
+\hline
+\end{longtable}
+\normalsize
+
+% =============================================================================
+\section{Plano de Indexação e Avaliação de Desempenho}
+\label{sec:indexacao}
+
+\subsection{Justificativa dos Índices Propostos}
+\label{subsec:indices-justif}
+Os índices propostos foram selecionados a partir da análise das colunas mais utilizadas como filtro e junção nas consultas intermediárias. Todos são do tipo B-Tree, adequado para consultas de igualdade e de intervalo sobre chaves estrangeiras e colunas booleanas. A tabela a seguir relaciona cada índice às consultas que dele se beneficiam.
+
+\begin{table}[htb]
+\centering
+\caption{Plano de indexação proposto.}
+\label{tab:indices}
+\small
+\begin{tabularx}{\textwidth}{|l|l|l|X|}
+\hline
+\textbf{Índice} & \textbf{Tabela} & \textbf{Coluna(s) / Tipo} & \textbf{Consultas beneficiadas} \\
+\hline
+idx\_inscricao\_evento    & rl\_inscricao    & (id\_evento) -- B-Tree       & QI04, QI06, QI09, QI10 \\
+idx\_inscricao\_status    & rl\_inscricao    & (cd\_status\_pagamento) -- B-Tree & QI04, QI06, QI09, QI10 \\
+idx\_anais\_evento        & rl\_anais        & (id\_evento) -- B-Tree       & QI01, QI05, QI08 \\
+idx\_autoria\_participante & rl\_autoria     & (id\_participante) -- B-Tree & QI02, QI03 \\
+idx\_revisao\_revisor     & rl\_revisao      & (id\_revisor) -- B-Tree      & QI07 \\
+idx\_publicacao\_aprovado & tb\_publicacao   & (st\_aprovado) -- B-Tree     & QI02, QI08 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Plano de Indexação 1}
+\begin{tabularx}{\textwidth}{|l|X|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & Hash \\
+\hline
+\texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{tabularx}
+
+\bigskip
+\subsubsection*{Plano de Indexação 2}
+\begin{tabularx}{\textwidth}{|l|X|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & B-Tree \\
+\hline
+\texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{tabularx}
+
+\bigskip
+\subsubsection*{Plano de Indexação 3}
+\begin{tabularx}{\textwidth}{|l|X|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\texttt{tb\_participante} & O CPF é o identificador único de pessoas no sistema e usado em buscas exatas (lookup por documento). Decidimos utilizar o index hash pois a variável CPF segue uma distribuição linear. & \texttt{nu\_cpf} & Hash \\
+\hline
+\texttt{tb\_revisor} & Mesma justificativa: localização pontual de revisores pelo CPF em validações e consultas de conflito de interesse, sempre via igualdade. & \texttt{nu\_cpf} & Hash \\
+\hline
+\end{tabularx}
+
+\begin{lstlisting}[caption={DDL dos índices.},label={lst:ddl-indices}]
+CREATE INDEX idx_inscricao_evento     ON rl_inscricao    (id_evento);
+CREATE INDEX idx_inscricao_status     ON rl_inscricao    (cd_status_pagamento);
+CREATE INDEX idx_anais_evento         ON rl_anais        (id_evento);
+CREATE INDEX idx_autoria_participante ON rl_autoria      (id_participante);
+CREATE INDEX idx_revisao_revisor      ON rl_revisao      (id_revisor);
+CREATE INDEX idx_publicacao_aprovado  ON tb_publicacao   (st_aprovado);
+\end{lstlisting}
+
+\subsection{Metodologia de Avaliação de Desempenho}
+\label{subsec:metodologia-desempenho}
+
+A avaliação de desempenho será conduzida segundo o seguinte protocolo:
+\begin{enumerate}[leftmargin=2cm]
+    \item Para cada consulta, serão realizadas \textbf{20 execuções} em duas
+          configurações: (i) \emph{baseline} (sem índices criados pelo grupo)
+          e (ii) \emph{com plano de indexação proposto}.
+    \item O tempo de execução será coletado via \texttt{EXPLAIN ANALYZE} do
+          PostgreSQL, registrando-se o \emph{Execution Time}.
+    \item Após cada execução, o \emph{cache} será descartado para garantir
+          medições representativas (\texttt{DISCARD ALL}).
+    \item Serão calculadas a média ($\mu$), o desvio padrão ($\sigma$) e o
+          \emph{speedup} ($S = \mu_{baseline} / \mu_{indexado}$).
+\end{enumerate}
+
+\subsection{Resultados}
+\label{subsec:resultados}
+
+\begin{longtable}{|c|c|r|r|r|r|}
+\caption{Tempos de execução das consultas (10 execuções cada via \texttt{EXPLAIN ANALYZE}).}
+\label{tab:tempos-execucao}\\
+\hline
+\textbf{Consulta} & \textbf{N} & $\boldsymbol{\mu}$ \textbf{(ms)} & $\boldsymbol{\sigma}$ \textbf{(ms)} & \textbf{mín (ms)} & \textbf{máx (ms)} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Consulta} & \textbf{N} & $\boldsymbol{\mu}$ (ms) & $\boldsymbol{\sigma}$ (ms) & mín (ms) & máx (ms) \\
+\hline
+\endhead
+\multicolumn{6}{|c|}{\textbf{Consultas Intermediárias}} \\
+\hline
+QI01 & 10 & 0,259 & 0,030 & 0,217 & 0,334 \\
+QI02 & 10 & 1,293 & 0,037 & 1,221 & 1,355 \\
+QI03 & 10 & 1,117 & 0,133 & 1,035 & 1,484 \\
+QI04 & 10 & 2,662 & 0,130 & 2,524 & 2,930 \\
+QI05 & 10 & 0,900 & 0,072 & 0,833 & 1,062 \\
+QI06 & 10 & 0,732 & 0,021 & 0,684 & 0,753 \\
+QI07 & 10 & 0,690 & 0,027 & 0,653 & 0,740 \\
+QI08 & 10 & 0,614 & 0,043 & 0,534 & 0,668 \\
+QI09 & 10 & 4,979 & 0,106 & 4,811 & 5,125 \\
+QI10 & 10 & 2,779 & 0,041 & 2,706 & 2,834 \\
+\hline
+\multicolumn{6}{|c|}{\textbf{Consultas Avançadas}} \\
+\hline
+QA01 & 10 & 3,054 & 0,084 & 2,941 & 3,177 \\
+QA02 & 10 & 1,140 & 0,027 & 1,098 & 1,178 \\
+QA03 & 10 & 2,870 & 0,072 & 2,792 & 2,986 \\
+QA04 & 10 & 5,844 & 0,134 & 5,657 & 6,049 \\
+QA05 & 10 & 2,079 & 0,055 & 2,004 & 2,169 \\
+QA06 & 10 & 0,444 & 0,011 & 0,429 & 0,463 \\
+QA07 & 10 & 5,272 & 0,062 & 5,200 & 5,400 \\
+QA08 & 10 & 3,728 & 0,076 & 3,611 & 3,858 \\
+QA09 & 10 & 2,817 & 0,091 & 2,694 & 2,985 \\
+QA10 & 10 & 2,933 & 0,079 & 2,855 & 3,103 \\
+QA11 & 10 & 3,778 & 0,039 & 3,721 & 3,852 \\
+QA12 & 10 & 1,657 & 0,043 & 1,618 & 1,746 \\
+QA13 & 10 & 1,350 & 0,020 & 1,325 & 1,387 \\
+QA14 & 10 & 1,366 & 0,040 & 1,307 & 1,436 \\
+QA15 & 10 & 1,326 & 0,017 & 1,305 & 1,352 \\
+QA16 & 10 & 2,796 & 0,026 & 2,752 & 2,835 \\
+QA17 & 10 & 6,381 & 0,093 & 6,259 & 6,572 \\
+QA18 & 10 & 2,497 & 0,048 & 2,440 & 2,583 \\
+QA19 & 10 & 0,667 & 0,017 & 0,639 & 0,692 \\
+QA20 & 10 & 7,372 & 0,468 & 6,837 & 8,206 \\
+\hline
+\end{longtable}
+
+\subsection{Comparativo entre Planos de Indexação}
+\label{subsec:comparativo-planos}
+
+Foram avaliados três planos de indexação distintos, com o objetivo de mensurar o
+impacto de diferentes escolhas de tipo de índice (\textsc{hash} vs.\ \textsc{b-tree})
+e de colunas-alvo sobre o desempenho das 30 consultas. Cada plano foi aplicado
+isoladamente sobre o mesmo \emph{dataset} e submetido ao mesmo protocolo de
+medição (10 execuções por consulta via \texttt{EXPLAIN ANALYZE}, com
+\texttt{DISCARD ALL} entre execuções).
+
+\begin{itemize}[leftmargin=2cm]
+    \item \textbf{Plano 1:} \textsc{hash} em \texttt{tb\_evento(vl\_preco)} e
+          \textsc{hash} em \texttt{rl\_inscricao(cd\_status\_pagamento)}.
+    \item \textbf{Plano 2:} \textsc{b-tree} em \texttt{tb\_evento(vl\_preco)} e
+          \textsc{hash} em \texttt{rl\_inscricao(cd\_status\_pagamento)}.
+    \item \textbf{Plano 3:} \textsc{hash} em \texttt{tb\_participante(nu\_cpf)} e
+          \textsc{hash} em \texttt{tb\_revisor(nu\_cpf)}.
+\end{itemize}
+
+A Tabela~\ref{tab:comparativo-planos} apresenta os tempos médios de execução
+($\mu$, em ms) de cada consulta sob o \emph{baseline} e sob cada um dos planos,
+acompanhados do respectivo \emph{speedup} ($S = \mu_{baseline}/\mu_{plano}$).
+Valores de $S > 1$ indicam ganho de desempenho; $S < 1$ indicam regressão.
+
+\input{benchmark_results/comparativo.tex}
+
+\subsection{Discussão}
+\label{subsec:discussao}
+Os resultados mostram que, no volume de dados atual, os ganhos de desempenho
+proporcionados pelos índices são modestos. Os Planos~1 e~2 apresentaram
+\emph{speedup} médio de aproximadamente $1{,}01\times$, indicando efeito
+praticamente neutro: os índices sobre \texttt{vl\_preco} e \texttt{cd\_status\_pagamento}
+chegam a beneficiar consultas pontuais (por exemplo, QI08 e QA13 com ganhos de
+até $1{,}16\times$), mas em outras consultas o otimizador opta por
+\emph{sequential scan} em razão do baixo volume das tabelas, e a sobrecarga
+associada à manutenção do índice se reflete em pequenas regressões.
+
+O Plano~3, voltado a índices \textsc{hash} sobre \texttt{nu\_cpf} de
+\texttt{tb\_participante} e \texttt{tb\_revisor}, apresentou \emph{speedup} médio
+de $0{,}92\times$, ou seja, \emph{regressão} de cerca de 8\%. As consultas
+avançadas que envolvem múltiplas junções com essas tabelas (QA07, QA08 e QA09)
+sofreram as maiores perdas, com $S$ entre $0{,}61$ e $0{,}72$. Esse comportamento
+é coerente com a literatura: índices \textsc{hash} são úteis apenas para
+predicados de igualdade isolados e, em junções, o planejador frequentemente
+prefere \emph{hash join} ou \emph{merge join} sobre varreduras sequenciais ---
+mantendo o índice apenas como estrutura adicional a ser atualizada, sem ganho
+correspondente na leitura.
+
+De modo geral, os experimentos confirmam que a escolha do índice deve considerar
+não apenas a coluna, mas também o tipo de acesso predominante e o volume de
+dados. Em tabelas pequenas, como as do presente esquema, os ganhos tendem a ser
+limitados; a expectativa é que, com o crescimento do volume, os índices
+\textsc{b-tree} sobre colunas de junção frequente (Plano~2) passem a apresentar
+ganhos mais expressivos do que os observados nesta avaliação.
+
+% =============================================================================
+\section{Considerações Finais}
+\label{sec:conclusao}
+
+O projeto resultou em um banco de dados relacional funcional para o domínio de eventos acadêmicos. O modelo cobre desde o cadastro de participantes e o controle financeiro das inscrições até o processo de revisão por pares e a organização dos anais. A preocupação com integridade referencial e com uma nomenclatura consistente facilita a manutenção e a evolução do esquema.
+
+As consultas intermediárias demonstram que o modelo é capaz de responder a perguntas relevantes para a gestão de eventos: volume de publicações por evento, perfil de autoria, situação dos pagamentos e desempenho financeiro por método. A consulta QI10, com o uso de \texttt{RANK()}, introduz o uso de funções de janela e serve de base para as consultas avançadas.
+
+As etapas seguintes compreendem a elaboração das vinte consultas avançadas, a execução do plano de indexação e a coleta sistemática dos tempos de execução para a avaliação de desempenho com \texttt{EXPLAIN ANALYZE}.
+
+% =============================================================================
+\begin{thebibliography}{9}
+
+\bibitem{elmasri2018}
+ELMASRI, R.; NAVATHE, S.~B.
+\emph{Sistemas de Banco de Dados}. 7.~ed. São Paulo: Pearson, 2018.
+
+\bibitem{datasus_mad}
+DATASUS.
+\emph{Metodologia de Administração de Dados (MAD)}.
+Disponível em: \url{https://datasus.saude.gov.br/metodologia-de-administracao-de-dados-mad/}.
+
+\bibitem{iso11179}
+ISO/IEC.
+\emph{ISO/IEC 11179-5:2015 --- Information technology --- Metadata registries (MDR) --- Part 5: Naming principles}.
+ISO, 2015.
+
+\bibitem{postgresql}
+THE POSTGRESQL GLOBAL DEVELOPMENT GROUP.
+\emph{PostgreSQL 16 Documentation}.
+Disponível em: \url{https://www.postgresql.org/docs/16/}.
+
+\end{thebibliography}
+
+% =============================================================================
+\appendix
+\section{Anexo A --- Script DDL Completo}
+\label{anx:ddl}
+% \lstinputlisting[caption={Script DDL completo.}]{sql_ddl/ddl.SQL}
+[Script disponível em \texttt{sql\_ddl/ddl.SQL} no repositório.]
+
+\section{Anexo B --- Script de População}
+\label{anx:populacao}
+% \lstinputlisting[caption={Script de população.}]{sql_output/00_executar_tudo.sql}
+[Script disponível em \texttt{sql\_output/00\_executar\_tudo.sql} no repositório.]
+
+\section{Anexo C --- Consultas Intermediárias e Avançadas}
+\label{anx:queries}
+% \lstinputlisting[caption={Consultas Intermediárias.}]{sql_intermediario/q1.sql}
+[Scripts disponíveis em \texttt{sql\_intermediario/} no repositório (q1.sql a q10.sql).]
+
+\section{Anexo D --- Tutorial de Reprodução}
+\label{anx:tutorial}
+
+\textbf{Pré-requisitos:} Docker e Docker Compose instalados.
+
+\textbf{Passos:}
+\begin{enumerate}
+    \item Clonar o repositório: \texttt{git clone https://github.com/igorspinola/mata60-projeto}
+    \item Criar o arquivo \texttt{.env} na raiz com as variáveis:
+          \texttt{DB\_NAME}, \texttt{DB\_USER}, \texttt{DB\_PASSWORD} e \texttt{MYSQL\_ROOT\_PASSWORD}.
+    \item Subir os containers: \texttt{docker compose up -d}
+    \item O banco é inicializado automaticamente com DDL e inserts via
+          \texttt{/docker-entrypoint-initdb.d/}.
+    \item Conectar via \texttt{psql} na porta \texttt{5432} ou usando um cliente gráfico.
+    \item Executar as consultas disponíveis em \texttt{sql\_intermediario/}.
+\end{enumerate}
+
+\textbf{Repositório público:} \url{https://github.com/igorspinola/mata60-projeto}
+
+
+
+\end{document}
