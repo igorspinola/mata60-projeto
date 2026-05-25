@@ -1,23 +1,31 @@
--- Query 17: Publicações cujo autor também é revisor (conflito de interesse)
--- Objetivo: Detectar casos onde um autor aparece como revisor (mesmo CPF) no sistema.
--- Tabelas: participante, autoria, publicacao, revisao, revisor
--- Funções: SUB-CONSULTAS + JOIN + GROUP BY
--- Requisito: detectar potencial conflito de interesse
+-- Query 17: Parcerias frequentes de coautoria (CPFs que coautoram >1 publicação)
+-- Objetivo: Identificar pares de pesquisadores (identificados por CPF) que
+--           coautoraram em mais de uma publicação — possíveis grupos de pesquisa.
+-- Tabelas: participante, autoria, publicacao
+-- Funções: SUB-CONSULTAS + JOIN (self-join) + GROUP BY + COUNT
+-- Requisito: detectar parcerias acadêmicas recorrentes
+-- Indexável: todos os joins usam PK/FK (id_publicacao, id_participante);
+--            nu_cpf exibido tem índice UNIQUE em tb_participante.
+-- Truque: au1.id_participante < au2.id_participante evita pares duplicados
+--         (A,B) e (B,A) e também impede par com a própria pessoa.
 
-SELECT pb.id_publicacao,
-       pb.no_titulo,
-       p.no_participante AS autor_em_conflito,
-       p.nu_cpf,
-       COUNT(*) AS qtd_revisoes_proprias
-FROM tb_publicacao pb
-JOIN rl_autoria au     ON au.id_publicacao = pb.id_publicacao
-JOIN tb_participante p ON p.id_participante = au.id_participante
-JOIN (
-    SELECT rv.id_publicacao, r.nu_cpf
-    FROM rl_revisao rv
-    JOIN tb_revisor r ON r.id_revisor = rv.id_revisor
-) AS revisores_da_pub
-       ON revisores_da_pub.id_publicacao = pb.id_publicacao
-      AND revisores_da_pub.nu_cpf = p.nu_cpf
-GROUP BY pb.id_publicacao, pb.no_titulo, p.no_participante, p.nu_cpf
-ORDER BY qtd_revisoes_proprias DESC;
+SELECT p1.no_participante AS pesquisador_1,
+       p1.nu_cpf          AS cpf_1,
+       p2.no_participante AS pesquisador_2,
+       p2.nu_cpf          AS cpf_2,
+       COUNT(DISTINCT pb.id_publicacao) AS qtd_coautorias
+FROM rl_autoria au1
+JOIN rl_autoria au2     ON au1.id_publicacao   = au2.id_publicacao
+                       AND au1.id_participante < au2.id_participante
+JOIN tb_participante p1 ON p1.id_participante  = au1.id_participante
+JOIN tb_participante p2 ON p2.id_participante  = au2.id_participante
+JOIN tb_publicacao pb   ON pb.id_publicacao    = au1.id_publicacao
+WHERE pb.id_publicacao IN (
+    SELECT id_publicacao
+    FROM rl_autoria
+    GROUP BY id_publicacao
+    HAVING COUNT(*) > 1
+)
+GROUP BY p1.no_participante, p1.nu_cpf, p2.no_participante, p2.nu_cpf
+HAVING COUNT(DISTINCT pb.id_publicacao) > 1
+ORDER BY qtd_coautorias DESC;
