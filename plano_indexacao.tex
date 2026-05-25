@@ -8,7 +8,7 @@
 
 \begin{document}
 
-\section*{Plano de Indexação}
+\section*{Plano de Indexação 1}
 
 \begin{longtable}{|l|p{7cm}|l|l|}
 \hline
@@ -22,6 +22,42 @@
 \texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & B-Tree \\
 \hline
 \texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{longtable}
+
+\bigskip
+\section*{Plano de Indexação 2}
+
+\begin{longtable}{|l|p{7cm}|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endhead
+\texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & Hash \\
+\hline
+\texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{longtable}
+
+\bigskip
+\section*{Plano de Indexação 3}
+
+\begin{longtable}{|l|p{7cm}|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endhead
+\texttt{tb\_participante} & O CPF é o identificador único de pessoas no sistema e usado em buscas exatas (lookup por documento). Decidimos utilizar o index hash pois a variável CPF segue uma distribuição linear. & \texttt{nu\_cpf} & Hash \\
+\hline
+\texttt{tb\_revisor} & Mesma justificativa: localização pontual de revisores pelo CPF em validações e consultas de conflito de interesse, sempre via igualdade. & \texttt{nu\_cpf} & Hash \\
 \hline
 \end{longtable}
 
