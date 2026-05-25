@@ -1,0 +1,47 @@
+% =============================================================================
+% Documento standalone: tabela de tempos de execucao das consultas.
+% Compile com: pdflatex tabela_tempos.tex
+% =============================================================================
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{caption}
+
+\title{Avalia\c{c}\~ao de Desempenho --- Consultas SQL\\\large MATA60 -- Banco de Dados}
+\author{Projeto Sistema de Eventos Acad\^emicos}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Metodologia}
+
+Para cumprir o requisito \textbf{[Q2]} (avalia\c{c}\~ao de desempenho com pelo menos
+10 execu\c{c}\~oes por consulta, m\'edia e desvio padr\~ao), cada uma das
+30 consultas (10 intermedi\'arias e 20 avan\c{c}adas) foi executada
+\textbf{10 vezes} no PostgreSQL~16 via \texttt{EXPLAIN (ANALYZE, TIMING ON)},
+sendo coletado o \emph{Execution Time} reportado pelo planejador.
+Antes de cada execu\c{c}\~ao foi emitido \texttt{DISCARD ALL} para limpar
+caches de sess\~ao. Foram calculados, por consulta, a m\'edia ($\mu$),
+o desvio padr\~ao amostral ($\sigma$), o m\'inimo e o m\'aximo dos tempos.
+
+\input{aggregated.tex}
+
+\section*{Observa\c{c}\~oes}
+
+\begin{itemize}
+  \item Banco executado em container Docker (PostgreSQL 16) com o
+        \emph{dataset} fornecido pelo grupo (\texttt{sql\_output/00\_executar\_tudo.sql}).
+  \item Todas as 30 consultas executaram sem erro nas 10 repeti\c{c}\~oes ($N=10$).
+  \item Os tempos consideram apenas o \emph{Execution Time} reportado por
+        \texttt{EXPLAIN ANALYZE}, excluindo o tempo de planejamento.
+  \item Os dados brutos est\~ao em \texttt{benchmark\_results/raw\_times.csv}
+        e os agregados em \texttt{benchmark\_results/aggregated.csv}.
+\end{itemize}
+
+\end{document}
