@@ -30,6 +30,16 @@
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{placeins}
+\usepackage{adjustbox}
+
+% Centralizar todas as tabelas globalmente e evitar margens à esquerda
+\makeatletter
+\g@addto@macro\@floatboxreset\centering
+\makeatother
+
+% Centralizar longtable por padrão
+\setlength{\LTleft}{\fill}
+\setlength{\LTright}{\fill}
 
 \hypersetup{
     colorlinks=true,
@@ -76,9 +86,18 @@
     captionpos=b,
     numbers=left,
     numberstyle=\tiny\color{gray},
-    numbersep=8pt,
-    xleftmargin=2em,
-    framexleftmargin=1.5em
+    numbersep=10pt,
+    xleftmargin=0pt,
+    xrightmargin=0pt,
+    framexleftmargin=0pt,
+    framexrightmargin=0pt,
+    framesep=3pt,
+    aboveskip=1em,
+    belowskip=1em,
+    columns=fullflexible,
+    keepspaces=true,
+    breakindent=0pt,
+    breakautoindent=false
 }
 
 \onehalfspacing
@@ -240,7 +259,6 @@ A análise do estudo de caso revelou oportunidades de ampliação do modelo orig
 O minimundo abrange o ciclo de vida de um evento acadêmico, da abertura de inscrições à publicação dos anais. Fazem parte do escopo: eventos, participantes, inscrições, publicações, autoria, revisão por pares e anais. Não fazem parte do escopo: emissão de certificados, grade programática detalhada e integração com plataformas externas de pagamento.
 
 \begin{table}[htb]
-\begin{minipage}{\textwidth}
 \centering
 \caption{Mapeamento entre elementos do minimundo e requisitos.}
 \label{tab:minimundo-requisitos}
@@ -270,7 +288,6 @@ O minimundo abrange o ciclo de vida de um evento acadêmico, da abertura de insc
 \texttt{rl\_anais}             & Publicações aceitas vinculadas ao evento                 & RF07 \\
 \hline
 \end{tabularx}
-\end{minipage}
 \end{table}
 
 % =============================================================================
@@ -331,7 +348,7 @@ A nomenclatura adotada segue as recomendações do MAD/DATASUS e da norma ISO/IE
 
 O banco de dados foi implantado no PostgreSQL 16. O script DDL está organizado em dois blocos: o primeiro cria as tabelas com suas restrições de integridade; o segundo declara as chaves estrangeiras por meio de comandos \texttt{ALTER TABLE}, permitindo que a ordem de criação das tabelas seja independente das dependências referenciais.
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- tabelas de domínio \texttt{tb\_status\_pagamento} e \texttt{tb\_tipo\_publicacao}.}, label={lst:ddl-dominio}]
 CREATE TABLE tb_status_pagamento (
     id_pagamento INTEGER PRIMARY KEY,
@@ -345,7 +362,7 @@ CREATE TABLE tb_tipo_publicacao (
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- entidade \texttt{tb\_evento}.}, label={lst:ddl-evento}]
 CREATE TABLE tb_evento (
     id_evento INTEGER PRIMARY KEY,
@@ -359,7 +376,7 @@ CREATE TABLE tb_evento (
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- entidades \texttt{tb\_participante} e \texttt{tb\_revisor}.}, label={lst:ddl-pessoas}]
 CREATE TABLE tb_participante (
     id_participante INTEGER PRIMARY KEY,
@@ -376,7 +393,7 @@ CREATE TABLE tb_revisor (
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- entidade \texttt{tb\_publicacao}.}, label={lst:ddl-publicacao}]
 CREATE TABLE tb_publicacao (
     id_publicacao INTEGER PRIMARY KEY,
@@ -391,7 +408,7 @@ CREATE TABLE tb_publicacao (
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- relacionamento \texttt{rl\_inscricao}.}, label={lst:ddl-inscricao}]
 CREATE TABLE rl_inscricao (
     nu_inscricao INTEGER UNIQUE NOT NULL,
@@ -405,7 +422,7 @@ CREATE TABLE rl_inscricao (
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- relacionamentos \texttt{rl\_autoria}, \texttt{rl\_revisao} e \texttt{rl\_anais}.}, label={lst:ddl-relacionamentos}]
 CREATE TABLE rl_autoria (
     id_participante INTEGER NOT NULL,
@@ -429,7 +446,7 @@ CREATE TABLE rl_anais (
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{tb\_publicacao} e \texttt{rl\_inscricao}.}, label={lst:fk-publicacao-inscricao}]
 ALTER TABLE tb_publicacao
     ADD CONSTRAINT FK_tb_publicacao_tipo_publicacao
@@ -449,7 +466,7 @@ ALTER TABLE rl_inscricao
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{rl\_anais} e \texttt{rl\_autoria}.}, label={lst:fk-anais-autoria}]
 ALTER TABLE rl_anais
     ADD CONSTRAINT FK_rl_anais_id_evento
@@ -469,7 +486,7 @@ ALTER TABLE rl_autoria
 \end{lstlisting}
 \end{minipage}
 
-\begin{minipage}{\linewidth}
+\noindent\begin{minipage}{\linewidth}
 \begin{lstlisting}[caption={DDL --- chaves estrangeiras de \texttt{rl\_revisao}.}, label={lst:fk-revisao}]
 ALTER TABLE rl_revisao
     ADD CONSTRAINT FK_rl_revisao_publicacao
@@ -1114,7 +1131,8 @@ GROUP BY tb_participante.id_participante;
 
 \subsection{Mapa Consulta $\times$ Requisito}
 
-\begin{longtable}{|c|l|l|l|}
+\small
+\begin{longtable}{|c|l|l|p{6.5cm}|}
 \caption{Associação entre consultas, requisitos atendidos e recursos SQL utilizados.}
 \label{tab:consultas-req}\\
 \hline
@@ -1158,6 +1176,7 @@ QA19 & Avançada & RF03, RF09 & JOIN, GROUP BY, COUNT, HAVING, SUB-QUERY \\
 QA20 & Avançada & RF02, RF03, RF05, RF07, RF09 & JOIN, GROUP BY, COUNT, SUB-QUERY, RANK() WINDOW \\
 \hline
 \end{longtable}
+\normalsize
 
 % =============================================================================
 \section{Plano de Indexação e Avaliação de Desempenho}
@@ -1168,7 +1187,6 @@ QA20 & Avançada & RF02, RF03, RF05, RF07, RF09 & JOIN, GROUP BY, COUNT, SUB-QUE
 Os índices propostos foram selecionados a partir da análise das colunas mais utilizadas como filtro e junção nas consultas intermediárias. Todos são do tipo B-Tree, adequado para consultas de igualdade e de intervalo sobre chaves estrangeiras e colunas booleanas. A tabela a seguir relaciona cada índice às consultas que dele se beneficiam.
 
 \begin{table}[htb]
-\begin{minipage}{\textwidth}
 \centering
 \caption{Plano de indexação proposto.}
 \label{tab:indices}
@@ -1185,7 +1203,6 @@ idx\_revisao\_revisor     & rl\_revisao      & (id\_revisor) -- B-Tree      & QI
 idx\_publicacao\_aprovado & tb\_publicacao   & (st\_aprovado) -- B-Tree     & QI02, QI08 \\
 \hline
 \end{tabularx}
-\end{minipage}
 \end{table}
 
 \begin{lstlisting}[caption={DDL dos índices.},label={lst:ddl-indices}]
