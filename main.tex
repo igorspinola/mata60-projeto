@@ -1205,6 +1205,54 @@ idx\_publicacao\_aprovado & tb\_publicacao   & (st\_aprovado) -- B-Tree     & QI
 \end{tabularx}
 \end{table}
 
+\subsubsection*{Plano de Indexação 1}
+\begin{longtable}{|l|p{7cm}|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endhead
+\texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & Hash \\
+\hline
+\texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{longtable}
+
+\subsubsection*{Plano de Indexação 2}
+\begin{longtable}{|l|p{7cm}|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endhead
+\texttt{tb\_evento} & A maioria dos relatórios financeiros calcula a receita a partir do preço do evento. Operações de \texttt{MAX(vl\_preco)}, ordenação e comparação por preço aparecem em consultas de público de alto valor e análises de receita. & \texttt{vl\_preco} & B-Tree \\
+\hline
+\texttt{rl\_inscricao} & Praticamente todos os relatórios financeiros consideram apenas inscrições com pagamento \textit{CONCLUIDO}. O filtro por status é o mais recorrente em consultas de receita real, perda potencial e preferência de pagamento. & \texttt{cd\_status\_pagamento} & Hash \\
+\hline
+\end{longtable}
+
+\subsubsection*{Plano de Indexação 3}
+\begin{longtable}{|l|p{7cm}|l|l|}
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Tabela} & \textbf{Justificativa} & \textbf{Variáveis} & \textbf{Tipo} \\
+\hline
+\endhead
+\texttt{tb\_participante} & O CPF é o identificador único de pessoas no sistema e usado em buscas exatas (lookup por documento). Decidimos utilizar o index hash pois a variável CPF segue uma distribuição linear. & \texttt{nu\_cpf} & Hash \\
+\hline
+\texttt{tb\_revisor} & Mesma justificativa: localização pontual de revisores pelo CPF em validações e consultas de conflito de interesse, sempre via igualdade. & \texttt{nu\_cpf} & Hash \\
+\hline
+\end{longtable}
+
 \begin{lstlisting}[caption={DDL dos índices.},label={lst:ddl-indices}]
 CREATE INDEX idx_inscricao_evento     ON rl_inscricao    (id_evento);
 CREATE INDEX idx_inscricao_status     ON rl_inscricao    (cd_status_pagamento);
@@ -1282,9 +1330,60 @@ QA20 & 10 & 7,372 & 0,468 & 6,837 & 8,206 \\
 \hline
 \end{longtable}
 
+\subsection{Comparativo entre Planos de Indexação}
+\label{subsec:comparativo-planos}
+
+Foram avaliados três planos de indexação distintos, com o objetivo de mensurar o
+impacto de diferentes escolhas de tipo de índice (\textsc{hash} vs.\ \textsc{b-tree})
+e de colunas-alvo sobre o desempenho das 30 consultas. Cada plano foi aplicado
+isoladamente sobre o mesmo \emph{dataset} e submetido ao mesmo protocolo de
+medição (10 execuções por consulta via \texttt{EXPLAIN ANALYZE}, com
+\texttt{DISCARD ALL} entre execuções).
+
+\begin{itemize}[leftmargin=2cm]
+    \item \textbf{Plano 1:} \textsc{hash} em \texttt{tb\_evento(vl\_preco)} e
+          \textsc{hash} em \texttt{rl\_inscricao(cd\_status\_pagamento)}.
+    \item \textbf{Plano 2:} \textsc{b-tree} em \texttt{tb\_evento(vl\_preco)} e
+          \textsc{hash} em \texttt{rl\_inscricao(cd\_status\_pagamento)}.
+    \item \textbf{Plano 3:} \textsc{hash} em \texttt{tb\_participante(nu\_cpf)} e
+          \textsc{hash} em \texttt{tb\_revisor(nu\_cpf)}.
+\end{itemize}
+
+A Tabela~\ref{tab:comparativo-planos} apresenta os tempos médios de execução
+($\mu$, em ms) de cada consulta sob o \emph{baseline} e sob cada um dos planos,
+acompanhados do respectivo \emph{speedup} ($S = \mu_{baseline}/\mu_{plano}$).
+Valores de $S > 1$ indicam ganho de desempenho; $S < 1$ indicam regressão.
+
+\input{benchmark_results/comparativo.tex}
+
 \subsection{Discussão}
 \label{subsec:discussao}
-A análise dos resultados será realizada após a coleta dos tempos de execução. Espera-se que os índices sobre colunas de junção frequente --- como \texttt{id\_evento} em \texttt{rl\_inscricao} e \texttt{id\_evento} em \texttt{rl\_anais} --- produzam os maiores ganhos de desempenho. Índices sobre colunas booleanas, como \texttt{st\_aprovado}, tendem a ser menos eficientes em tabelas pequenas, mas relevantes quando o volume de dados crescer.
+Os resultados mostram que, no volume de dados atual, os ganhos de desempenho
+proporcionados pelos índices são modestos. Os Planos~1 e~2 apresentaram
+\emph{speedup} médio de aproximadamente $1{,}01\times$, indicando efeito
+praticamente neutro: os índices sobre \texttt{vl\_preco} e \texttt{cd\_status\_pagamento}
+chegam a beneficiar consultas pontuais (por exemplo, QI08 e QA13 com ganhos de
+até $1{,}16\times$), mas em outras consultas o otimizador opta por
+\emph{sequential scan} em razão do baixo volume das tabelas, e a sobrecarga
+associada à manutenção do índice se reflete em pequenas regressões.
+
+O Plano~3, voltado a índices \textsc{hash} sobre \texttt{nu\_cpf} de
+\texttt{tb\_participante} e \texttt{tb\_revisor}, apresentou \emph{speedup} médio
+de $0{,}92\times$, ou seja, \emph{regressão} de cerca de 8\%. As consultas
+avançadas que envolvem múltiplas junções com essas tabelas (QA07, QA08 e QA09)
+sofreram as maiores perdas, com $S$ entre $0{,}61$ e $0{,}72$. Esse comportamento
+é coerente com a literatura: índices \textsc{hash} são úteis apenas para
+predicados de igualdade isolados e, em junções, o planejador frequentemente
+prefere \emph{hash join} ou \emph{merge join} sobre varreduras sequenciais ---
+mantendo o índice apenas como estrutura adicional a ser atualizada, sem ganho
+correspondente na leitura.
+
+De modo geral, os experimentos confirmam que a escolha do índice deve considerar
+não apenas a coluna, mas também o tipo de acesso predominante e o volume de
+dados. Em tabelas pequenas, como as do presente esquema, os ganhos tendem a ser
+limitados; a expectativa é que, com o crescimento do volume, os índices
+\textsc{b-tree} sobre colunas de junção frequente (Plano~2) passem a apresentar
+ganhos mais expressivos do que os observados nesta avaliação.
 
 % =============================================================================
 \section{Considerações Finais}
